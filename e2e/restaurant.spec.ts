@@ -22,6 +22,13 @@ test('покупка растения, возврат в меню, продол�
   await page.getByRole('button', { name: 'Приблизить камеру' }).click();
   await page.getByTestId('restaurant-canvas').locator('canvas').hover();
   await page.mouse.wheel(0, 120);
+  await page.mouse.move(800, 550);
+  await page.mouse.down();
+  await page.mouse.move(850, 580, { steps: 5 });
+  await page.mouse.up();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('KeyA');
+  await page.getByRole('button', { name: 'Сбросить вид' }).click();
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.getByRole('button', { name: 'Растение — 50 монет' }).click();

@@ -38,6 +38,8 @@ export class RestaurantWorld {
   private resizeObserver: ResizeObserver;
   private zoom = 1;
   private cameraControls: HTMLDivElement;
+  private pan = new THREE.Vector3();
+  private drag: { id: number; x: number; y: number } | null = null;
 
   constructor(private container: HTMLElement, private state: GameState, private callbacks: WorldCallbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -75,8 +77,12 @@ export class RestaurantWorld {
     this.camera.position.set(11, 13, 11);
     this.camera.lookAt(0, 0.3, 0);
     this.cameraControls = document.createElement('div');
-    this.cameraControls.style.cssText = 'position:absolute;right:16px;bottom:16px;z-index:5;display:grid;grid-template-columns:44px 44px;gap:8px';
-    for (const [label, title, action] of [['+', 'Приблизить камеру', () => this.zoomIn()], ['−', 'Отдалить камеру', () => this.zoomOut()]] as const) {
+    this.cameraControls.style.cssText = 'position:absolute;right:16px;bottom:16px;z-index:5;display:grid;grid-template-columns:44px 44px 44px;gap:8px';
+    for (const [label, title, action] of [
+      ['+', 'Приблизить камеру', () => this.zoomIn()],
+      ['−', 'Отдалить камеру', () => this.zoomOut()],
+      ['⌂', 'Сбросить вид', () => this.resetView()],
+    ] as const) {
       const button = document.createElement('button');
       button.textContent = label;
       button.setAttribute('aria-label', title);
@@ -90,9 +96,49 @@ export class RestaurantWorld {
     this.resizeObserver.observe(container);
     this.renderer.domElement.addEventListener('pointerdown', this.onPointer);
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.addEventListener('pointerup', this.onPointerEnd);
+    this.renderer.domElement.addEventListener('pointercancel', this.onPointerEnd);
     this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
+    this.renderer.domElement.style.touchAction = 'none';
+    window.addEventListener('keydown', this.onKeyDown);
     this.resize();
   }
+
+  private resetView(): void {
+    this.pan.set(0, 0, 0);
+    this.zoom = 1;
+    this.resize();
+  }
+
+  private clampPan(): void {
+    const centerX = (this.state.width - 8) / 2;
+    const centerZ = (this.state.height - 8) / 2;
+    this.pan.x = THREE.MathUtils.clamp(this.pan.x, centerX - this.state.width / 2 - 2, centerX + this.state.width / 2 + 2);
+    this.pan.z = THREE.MathUtils.clamp(this.pan.z, centerZ - this.state.height / 2 - 2, centerZ + this.state.height / 2 + 2);
+  }
+
+  private onKeyDown = (event: KeyboardEvent): void => {
+    if (event.target instanceof HTMLInputElement || this.container.hidden) return;
+    const moves: Record<string, [number, number]> = {
+      KeyW: [-1, -1], ArrowUp: [-1, -1], KeyS: [1, 1], ArrowDown: [1, 1],
+      KeyA: [-1, 1], ArrowLeft: [-1, 1], KeyD: [1, -1], ArrowRight: [1, -1],
+    };
+    const move = moves[event.code];
+    if (!move) return;
+    event.preventDefault();
+    const step = 0.6 / this.zoom;
+    this.pan.x += move[0] * step;
+    this.pan.z += move[1] * step;
+    this.clampPan();
+    this.resize();
+  };
+
+  private onPointerEnd = (event: PointerEvent): void => {
+    if (this.drag?.id !== event.pointerId) return;
+    this.drag = null;
+    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
+    this.renderer.domElement.style.cursor = 'default';
+  };
 
   zoomIn(): void {
     this.zoom = Math.min(1.8, Math.round((this.zoom + 0.1) * 10) / 10);
@@ -175,6 +221,7 @@ export class RestaurantWorld {
   stop(): void {
     cancelAnimationFrame(this.frameId);
     this.frameId = 0;
+    this.drag = null;
   }
 
   dispose(): void {
@@ -182,7 +229,10 @@ export class RestaurantWorld {
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointer);
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('pointerup', this.onPointerEnd);
+    this.renderer.domElement.removeEventListener('pointercancel', this.onPointerEnd);
     this.renderer.domElement.removeEventListener('wheel', this.onWheel);
+    window.removeEventListener('keydown', this.onKeyDown);
     this.cameraControls.remove();
     this.scene.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     this.renderer.dispose();
@@ -221,8 +271,9 @@ export class RestaurantWorld {
     const viewHeight = (aspect < 1 ? roomHeight / aspect : roomHeight) / this.zoom;
     const offsetX = (this.state.width - 8) / 2;
     const offsetZ = (this.state.height - 8) / 2;
-    this.camera.position.set(11 + offsetX, 13, 11 + offsetZ);
-    this.camera.lookAt(offsetX, 0.3, offsetZ);
+    this.clampPan();
+    this.camera.position.set(11 + offsetX + this.pan.x, 13, 11 + offsetZ + this.pan.z);
+    this.camera.lookAt(offsetX + this.pan.x, 0.3, offsetZ + this.pan.z);
     this.camera.left = -viewHeight * aspect / 2;
     this.camera.right = viewHeight * aspect / 2;
     this.camera.top = viewHeight / 2;
@@ -243,6 +294,17 @@ export class RestaurantWorld {
   }
 
   private onPointerMove = (event: PointerEvent): void => {
+    if (this.drag?.id === event.pointerId) {
+      const scale = Math.max(12, this.state.height + 4) / this.zoom / Math.max(this.renderer.domElement.clientHeight, 1);
+      const dx = (event.clientX - this.drag.x) * scale;
+      const dy = (event.clientY - this.drag.y) * scale;
+      this.pan.x -= (dx - dy) / Math.sqrt(2);
+      this.pan.z -= (dx + dy) / Math.sqrt(2);
+      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      this.clampPan();
+      this.resize();
+      return;
+    }
     if (!this.placementKind && !this.doorMoveMode && !this.editorMoving) return;
     const point = this.gridFromPointer(event);
     if (!point) return this.hideHighlights();
@@ -299,7 +361,13 @@ export class RestaurantWorld {
       this.callbacks.onChange();
       return;
     }
-    if (!this.placementKind && !this.doorMoveMode) return;
+    if (!this.placementKind && !this.doorMoveMode) {
+      if (event.button !== 0) return;
+      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      this.renderer.domElement.setPointerCapture(event.pointerId);
+      this.renderer.domElement.style.cursor = 'grabbing';
+      return;
+    }
     const point = this.gridFromPointer(event);
     if (!point) return;
     const result = this.doorMoveMode ? moveDoor(this.state, point) : placeFurniture(this.state, this.placementKind!, point);
