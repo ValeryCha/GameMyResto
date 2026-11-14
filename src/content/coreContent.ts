@@ -5,4 +5,5 @@ export const CATALOG: Record<FurnitureKind, { price: number; name: string }> = {
   table: { price: 120, name: 'Стол' },
   chair: { price: 60, name: 'Стул' },
   plant: { price: 50, name: 'Растение' },
+  counter: { price: 0, name: 'Стойка выдачи' },
 };

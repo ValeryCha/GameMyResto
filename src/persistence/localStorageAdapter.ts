@@ -1,4 +1,5 @@
 import { createGame } from '../simulation/createGame';
+import { normalizeState } from './normalizeState';
 import type { GameState } from '../simulation/types';
 import type { SaveEnvelope, StorageAdapter } from './storage';
 
@@ -35,7 +36,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     try {
       const save = JSON.parse(raw) as SaveEnvelope;
       if (save.schema !== 1 || save.state?.version !== 1) return null;
-      return save.state;
+      return normalizeState(save.state);
     } catch {
       return null;
     }

@@ -20,6 +20,6 @@ describe('placeFurniture', () => {
     const state = createGame();
     state.coins = 49;
     expect(placeFurniture(state, 'plant', { x: 3, y: 2 })).toEqual({ ok: false, reason: 'Недостаточно монет' });
-    expect(state.furniture).toHaveLength(4);
+    expect(state.furniture).toHaveLength(createGame().furniture.length);
   });
 });

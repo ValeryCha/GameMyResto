@@ -1,10 +1,11 @@
 export type Role = 'chef' | 'waiter';
-export type FurnitureKind = 'door' | 'stove' | 'table' | 'chair' | 'plant';
+export type FurnitureKind = 'door' | 'stove' | 'table' | 'chair' | 'plant' | 'counter';
 export interface Point { x: number; y: number }
-export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point }
+export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point; taskId?: string }
 export interface Furniture { id: string; kind: FurnitureKind; position: Point; rotation: 0 | 90 | 180 | 270 }
-export interface Customer { id: string; position: Point; state: 'entering' | 'waiting' | 'ordering' | 'waitingFood' | 'eating' | 'leaving'; patience: number; target?: Point; orderId?: string }
-export interface Order { id: string; customerId: string; state: 'waitingCook' | 'cooking' | 'waitingDelivery' | 'delivered'; progress: number }
+export type CustomerState = 'entering' | 'waiting' | 'seekingSeat' | 'wandering' | 'inspecting' | 'ordering' | 'waitingFood' | 'eating' | 'leaving';
+export interface Customer { id: string; position: Point; state: CustomerState; patience: number; target?: Point; orderId?: string; seatId?: string; actionUntil?: number; foodWait?: number }
+export interface Order { id: string; customerId: string; state: 'waitingCook' | 'cooking' | 'waitingDelivery' | 'delivered'; progress: number; dishId?: string; assignedTo?: string }
 export interface GameState {
   version: 1;
   coins: number;
@@ -13,6 +14,8 @@ export interface GameState {
   tick: number;
   width: 8;
   height: 8;
+  randomSeed: number;
+  guestLimit: number;
   employees: Employee[];
   furniture: Furniture[];
   customers: Customer[];
