@@ -28,7 +28,10 @@ test('гость садится на стул, получает суп и вып
   await expect(hud).toContainText('Монеты: 605', { timeout: 65_000 });
   await expect(hud).toContainText('Опыт: 40');
   await expect(page.getByLabel('Текущее задание')).toContainText('Задание 1: Первый гость');
+  await expect(page.getByLabel('Уведомление о выполненном задании')).toBeVisible();
+  await expect(page.getByLabel('Уведомление о выполненном задании')).toContainText('Задание выполнено');
   await page.screenshot({ path: 'artifacts/restaurant-ai-delivered.png' });
+  await expect(page.getByLabel('Уведомление о выполненном задании')).toBeHidden({ timeout: 5_000 });
 
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
   await expect(page.getByTestId('menu-balance')).toContainText('Текущий баланс: 605 монет');
