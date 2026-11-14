@@ -39,7 +39,7 @@ export class RestaurantWorld {
   private zoom = 1;
   private cameraControls: HTMLDivElement;
   private pan = new THREE.Vector3();
-  private drag: { id: number; x: number; y: number } | null = null;
+  private drag: { id: number; x: number; y: number; startX: number; startY: number } | null = null;
 
   constructor(private container: HTMLElement, private state: GameState, private callbacks: WorldCallbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -135,9 +135,12 @@ export class RestaurantWorld {
 
   private onPointerEnd = (event: PointerEvent): void => {
     if (this.drag?.id !== event.pointerId) return;
+    const isClick = Math.hypot(event.clientX - this.drag.startX, event.clientY - this.drag.startY) <= 5;
+    const selectOnRelease = this.editorMode && !this.editorMoving && event.type === 'pointerup' && isClick;
     this.drag = null;
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
     this.renderer.domElement.style.cursor = 'default';
+    if (selectOnRelease) this.selectFurniture(event);
   };
 
   zoomIn(): void {
@@ -300,7 +303,7 @@ export class RestaurantWorld {
       const dy = (event.clientY - this.drag.y) * scale;
       this.pan.x -= (dx - dy) / Math.sqrt(2);
       this.pan.z -= (dx + dy) / Math.sqrt(2);
-      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      this.drag = { ...this.drag, x: event.clientX, y: event.clientY };
       this.clampPan();
       this.resize();
       return;
@@ -349,8 +352,7 @@ export class RestaurantWorld {
   }
 
   private onPointer = (event: PointerEvent): void => {
-    if (this.editorMode) {
-      if (!this.editorMoving) return this.selectFurniture(event);
+    if (this.editorMode && this.editorMoving) {
       const point = this.gridFromPointer(event);
       if (!point || !this.selectedId) return;
       const result = moveFurniture(this.state, this.selectedId, point);
@@ -363,7 +365,7 @@ export class RestaurantWorld {
     }
     if (!this.placementKind && !this.doorMoveMode) {
       if (event.button !== 0) return;
-      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY };
       this.renderer.domElement.setPointerCapture(event.pointerId);
       this.renderer.domElement.style.cursor = 'grabbing';
       return;

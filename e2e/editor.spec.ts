@@ -10,6 +10,12 @@ test('редактор перемещает, вращает и удаляет м
   const panel = page.getByLabel('Редактор обстановки');
   await expect(panel).toBeVisible();
   const canvas = page.getByTestId('restaurant-canvas').locator('canvas');
+  await page.mouse.move(800, 560);
+  await page.mouse.down();
+  await page.mouse.move(850, 590, { steps: 5 });
+  await page.mouse.up();
+  await expect(panel).not.toContainText('Стул');
+  await page.getByRole('button', { name: 'Сбросить вид' }).click();
   await canvas.click({ position: { x: 635, y: 460 } });
   await expect(panel).toContainText('Стул');
   await page.getByRole('button', { name: 'Переместить', exact: true }).click();
