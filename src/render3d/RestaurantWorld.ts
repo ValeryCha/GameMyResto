@@ -76,15 +76,25 @@ export class RestaurantWorld {
   }
 
   start(): void {
+    if (this.frameId) return;
     this.lastTime = performance.now();
     this.frameId = requestAnimationFrame(this.animate);
   }
 
   stop(): void {
     cancelAnimationFrame(this.frameId);
+    this.frameId = 0;
+  }
+
+  dispose(): void {
+    this.stop();
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointer);
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
     this.renderer.dispose();
+    this.renderer.domElement.remove();
   }
 
   private animate = (time: number): void => {

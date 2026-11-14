@@ -5,6 +5,7 @@ import type { SaveEnvelope, StorageAdapter } from './storage';
 interface KeyValueStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 const PRIMARY = 'moy-restoran:primary';
@@ -21,6 +22,11 @@ export class LocalStorageAdapter implements StorageAdapter {
     const previous = this.read(PRIMARY);
     if (previous) this.storage.setItem(BACKUP, JSON.stringify(this.envelope(previous)));
     this.storage.setItem(PRIMARY, JSON.stringify(this.envelope(state)));
+  }
+
+  reset(): void {
+    this.storage.removeItem(PRIMARY);
+    this.storage.removeItem(BACKUP);
   }
 
   private read(key: string): GameState | null {

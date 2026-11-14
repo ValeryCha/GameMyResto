@@ -9,4 +9,5 @@ export interface SaveEnvelope {
 export interface StorageAdapter {
   load(): GameState;
   save(state: GameState): void;
+  reset(): void;
 }
