@@ -32,6 +32,14 @@ describe('procedural models', () => {
     expect(vertical.position.z).toBe(0);
   });
 
+  it('содержит скрытые сковородку и огонь на плите', () => {
+    const stove = createFurnitureMesh({ id: 'stove', kind: 'stove', position: { x: 1, y: 1 }, rotation: 0 }, classicSkin);
+    expect(stove.userData.pan).toBeInstanceOf(THREE.Group);
+    expect(stove.userData.flame).toBeInstanceOf(THREE.Group);
+    expect(stove.userData.pan.visible).toBe(false);
+    expect(stove.userData.flame.visible).toBe(false);
+  });
+
   it('содержит суставы для анимации и рабочие предметы персонала', () => {
     const chef = createActorMesh({ id: 'chef', role: 'chef', position: { x: 0, y: 0 }, energy: 100 });
     const waiter = createActorMesh({ id: 'waiter', role: 'waiter', position: { x: 0, y: 0 }, energy: 100 });

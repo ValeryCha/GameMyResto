@@ -411,6 +411,12 @@ export class RestaurantWorld {
         this.entities.set(item.id, model);
         this.scene.add(model);
       }
+      if (item.kind === 'stove') {
+        const cooking = this.state.orders.some((order) => order.state === 'cooking');
+        model.userData.pan.visible = cooking;
+        model.userData.flame.visible = cooking;
+        if (cooking) model.userData.flame.scale.y = 0.9 + Math.sin(time / 90) * 0.1;
+      }
     }
     for (const actor of [...this.state.employees, ...this.state.customers]) {
       current.add(actor.id);

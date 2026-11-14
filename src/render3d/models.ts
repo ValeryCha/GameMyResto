@@ -48,6 +48,19 @@ function stoveModel(): THREE.Group {
   }
   box(group, [0.54, 0.35, 0.025], [0, 0.4, 0.413], dark);
   for (const x of [-0.25, 0, 0.25]) cylinder(group, 0.045, 0.05, [x, 0.69, 0.43], cream).rotation.x = Math.PI / 2;
+  const pan = new THREE.Group();
+  cylinder(pan, 0.19, 0.065, [-0.22, 0.97, -0.2], 0x252b2d);
+  box(pan, [0.3, 0.045, 0.07], [-0.22, 0.98, 0.04], dark);
+  pan.visible = false;
+  group.add(pan);
+  const flame = new THREE.Group();
+  for (const [x, z, height, color] of [[-0.28, -0.2, 0.12, 0xff9d32], [-0.17, -0.2, 0.15, 0xffc438], [-0.22, -0.13, 0.11, 0xff7728]] as const) {
+    cylinder(flame, 0.045, height, [x, 0.91, z], color, 0.005);
+  }
+  flame.visible = false;
+  group.add(flame);
+  group.userData.pan = pan;
+  group.userData.flame = flame;
   return group;
 }
 

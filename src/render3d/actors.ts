@@ -23,10 +23,7 @@ export function updateActorVisual(model: THREE.Group, visual: ActorVisualState):
   model.userData.seatOffset = THREE.MathUtils.lerp(model.userData.seatOffset ?? 0, visual.seated ? 0.22 : 0, damping);
   model.userData.bodyBob = visual.moving && !visual.seated ? Math.abs(Math.sin(visual.time * 9)) * 0.04 : 0;
   if (model.userData.carrying) model.userData.carrying.visible = Boolean(visual.carrying);
-  if (model.userData.cooking) {
-    model.userData.cooking.visible = Boolean(visual.cooking);
-    if (visual.cooking) model.userData.cooking.rotation.y = visual.time * 3;
-  }
+  if (model.userData.cooking) model.userData.cooking.visible = false;
   const ring = model.userData.patienceRing as THREE.Mesh;
   ring.visible = visual.patience !== undefined;
   if (visual.patience !== undefined) {
