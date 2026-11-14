@@ -17,14 +17,15 @@ export function hireWaiter(state: GameState): CommandResult {
 }
 
 export function increaseGuestLimit(state: GameState): CommandResult {
-  if (!spend(state, 5000, 3)) return insufficient;
+  if (!spend(state, 600, 3)) return insufficient;
   state.guestLimit += 1;
   return { ok: true };
 }
 
 export function expandRestaurant(state: GameState): CommandResult {
-  if (!spend(state, 10000, 15)) return insufficient;
+  if (!spend(state, 50000, 15)) return insufficient;
   state.width += 2;
   state.height += 2;
+  state.paidExpansions += 1;
   return { ok: true };
 }

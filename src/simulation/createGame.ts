@@ -2,7 +2,8 @@ import type { GameState } from './types';
 
 export function createGame(): GameState {
   return {
-    version: 1, coins: 1_000, experience: 0, popularity: 10, tick: 0, width: 8, height: 8,
+    version: 1, coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
+    servedTotal: 0, paidExpansions: 0, popularity: 10, tick: 0, width: 8, height: 8,
     randomSeed: 123456789, guestLimit: 7,
     employees: [
       { id: 'chef-1', role: 'chef', position: { x: 2, y: 2 }, energy: 100 },

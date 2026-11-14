@@ -10,6 +10,11 @@ export interface GameState {
   version: 1;
   coins: number;
   experience: number;
+  level: number;
+  completedQuestIds: string[];
+  unlockedDishIds: string[];
+  servedTotal: number;
+  paidExpansions: number;
   popularity: number;
   tick: number;
   width: number;

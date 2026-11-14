@@ -7,6 +7,7 @@ import { expandRestaurant, hireWaiter, increaseGuestLimit } from './simulation/s
 import type { FurnitureKind } from './simulation/types';
 import { createHud } from './ui/hud';
 import { createDebugPanel } from './ui/debugPanel';
+import { createQuestPanel } from './ui/questPanel';
 import { createMainMenu } from './ui/mainMenu';
 import { createShopPanel } from './ui/shopPanel';
 
@@ -18,6 +19,7 @@ let world: RestaurantWorld | undefined;
 
 const hud = createHud(() => shop.open(), returnToMenu, () => cancelPlacement());
 const debug = createDebugPanel();
+const quests = createQuestPanel();
 const shop = createShopPanel({
   onHire: () => { hireWaiter(state); storage.save(state); },
   onLimit: () => { increaseGuestLimit(state); storage.save(state); },
@@ -41,6 +43,7 @@ const menu = createMainMenu({
 menu.setBalance(state.coins);
 menu.show();
 debug.setVisible(false);
+quests.setVisible(false);
 
 function cancelPlacement(): void {
   world?.cancelPlacement();
@@ -53,6 +56,7 @@ function play(): void {
   hud.setVisible(true);
   shop.setVisible(true);
   debug.setVisible(true);
+  quests.setVisible(true);
   if (!world) {
     try {
       world = new RestaurantWorld(container, state, {
@@ -60,7 +64,7 @@ function play(): void {
         onPlacementEnd: () => hud.setPlacement(null),
         onPlacementError: (reason) => hud.setPlacement('выбранный объект', reason),
         onSecond: () => { if (state.tick % 10 === 0) storage.save(state); },
-        onFrame: () => { hud.update(state); shop.update(state); debug.update(state); },
+        onFrame: () => { hud.update(state); shop.update(state); debug.update(state); quests.update(state); },
       });
     } catch {
       container.textContent = 'Не удалось запустить 3D-режим. Проверьте, поддерживает ли браузер WebGL.';
@@ -70,6 +74,7 @@ function play(): void {
   }
   hud.update(state);
   shop.update(state);
+  quests.update(state);
   world.start();
 }
 
@@ -84,6 +89,7 @@ function returnToMenu(): void {
   hud.setVisible(false);
   shop.setVisible(false);
   debug.setVisible(false);
+  quests.setVisible(false);
   menu.setBalance(state.coins);
   menu.show();
 }

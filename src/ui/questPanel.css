@@ -1,0 +1,27 @@
+.quest-panel {
+  position: fixed;
+  z-index: 2;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  gap: 5px;
+  width: min(310px, calc(100vw - 32px));
+  padding: 13px 15px;
+  border: 2px solid #80563b;
+  border-radius: 14px;
+  background: #fff7e8ed;
+  color: #3d2d24;
+  font: 14px/1.35 system-ui, sans-serif;
+}
+.quest-panel small { color: #8b4b2d; font-weight: 650; }
+@media (max-width: 600px) {
+  .quest-panel {
+    top: auto;
+    right: 12px;
+    bottom: 66px;
+    left: 12px;
+    width: auto;
+    padding: 10px 52px 10px 12px;
+    font-size: 12px;
+  }
+}

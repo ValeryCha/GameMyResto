@@ -17,8 +17,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'chair', label: 'Стул', price: 75, category: 'Мебель', furniture: 'chair' },
   { id: 'plant', label: 'Растение', price: 50, category: 'Мебель', furniture: 'plant' },
   { id: 'door', label: 'Перенести дверь', price: 100, category: 'Дверь' },
-  { id: 'limit', label: '+1 гость', price: 5000, category: 'Лимиты' },
-  { id: 'expand', label: 'Расширить +2×2', price: 10000, category: 'Расширение' },
+  { id: 'limit', label: '+1 гость', price: 600, category: 'Лимиты' },
+  { id: 'expand', label: 'Расширить +2×2', price: 50000, category: 'Расширение' },
 ];
 
 export const canAfford = (state: GameState, item: ShopItem): boolean => state.coins >= item.price;

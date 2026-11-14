@@ -24,7 +24,7 @@ import { moveDoor, placeFurniture } from '../src/simulation/commands';
     expect(state.employees.some((employee) => employee.role === 'waiter')).toBe(false);
     expect(hireWaiter(state).ok).toBe(true);
     expect(state.employees.filter((employee) => employee.role === 'waiter')).toHaveLength(1);
-    state.coins = 16000;
+    state.coins = 60000;
     expect(increaseGuestLimit(state).ok).toBe(true);
     expect(state.guestLimit).toBe(8);
     expect(expandRestaurant(state).ok).toBe(true);

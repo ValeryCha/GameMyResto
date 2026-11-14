@@ -10,7 +10,7 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
   text.dataset.testid = 'hud-status';
   text.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 18px;font-weight:650';
   const values: Record<string, HTMLSpanElement> = {};
-  for (const [key, label] of [['coins', 'Монеты'], ['experience', 'Опыт'], ['popularity', 'Рейтинг'], ['guests', 'Гости']]) {
+  for (const [key, label] of [['level', 'Уровень'], ['coins', 'Монеты'], ['experience', 'Опыт'], ['popularity', 'Рейтинг'], ['guests', 'Гости']]) {
     const item = document.createElement('span');
     item.textContent = `${label}: `;
     const value = document.createElement('span');
@@ -42,6 +42,7 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
   return {
     update(state: GameState) {
       const model = getHudModel(state);
+      values.level.textContent = String(model.level);
       values.coins.textContent = String(model.coins);
       values.experience.textContent = String(model.experience);
       values.popularity.textContent = model.popularity;

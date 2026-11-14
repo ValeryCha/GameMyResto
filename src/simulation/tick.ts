@@ -4,6 +4,7 @@ import { isWalkable, samePoint } from './grid';
 import { moveToward } from './movement';
 import { nextRandom } from './random';
 import { findSeat, isSeatCurrent } from './seating';
+import { availableDishes, processProgression } from './progression';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
 
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -71,6 +72,7 @@ function updateCustomer(state: GameState, guest: Customer): void {
       const dish = DISHES.find((item) => item.id === order?.dishId) ?? DISHES[0];
       state.coins += dish.price;
       state.experience += 10;
+      state.servedTotal += 1;
       state.popularity = Math.min(100, state.popularity + 0.1);
       guest.state = 'leaving';
       guest.target = exitTarget(state, guest);
@@ -100,7 +102,8 @@ function updateCustomer(state: GameState, guest: Customer): void {
     const action = chooseGuestAction(state, guest);
     if (action === 'order') {
       const orderId = `order-${guest.id}`;
-      const dish = DISHES[Math.floor(nextRandom(state) * DISHES.length)];
+      const dishes = availableDishes(state);
+      const dish = dishes[Math.floor(nextRandom(state) * dishes.length)];
       guest.orderId = orderId;
       guest.state = 'waitingFood';
       guest.foodWait = 120;
@@ -232,5 +235,6 @@ export function advanceSimulation(state: GameState, steps = 1): void {
     const chef = state.employees.find((employee) => employee.role === 'chef');
     if (chef) updateChef(state, chef);
     for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) updateWaiter(state, waiter);
+    processProgression(state);
   }
 }
