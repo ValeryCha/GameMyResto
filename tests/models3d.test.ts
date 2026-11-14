@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFurnitureMesh, createActorMesh, createRestaurantShell } from '../src/render3d/models';
 import { classicSkin } from '../src/render3d/skins';
+import { furnitureCells } from '../src/simulation/grid';
 import * as THREE from 'three';
 
 describe('procedural models', () => {
@@ -17,6 +18,14 @@ describe('procedural models', () => {
   it('показывает стойку выдачи низким рабочим столом, а не дверью', () => {
     const counter = createFurnitureMesh({ id: 'counter', kind: 'counter', position: { x: 0, y: 0 }, rotation: 0 }, classicSkin);
     expect(new THREE.Box3().setFromObject(counter).max.y).toBeLessThan(1.2);
+  });
+
+  it('двойной стол занимает две клетки и имеет широкую столешницу', () => {
+    const item = { id: 'double', kind: 'tableDouble' as const, position: { x: 3, y: 3 }, rotation: 0 as const };
+    const table = createFurnitureMesh(item, classicSkin);
+    const bounds = new THREE.Box3().setFromObject(table);
+    expect(bounds.max.x - bounds.min.x).toBeGreaterThan(1.7);
+    expect(furnitureCells(item)).toEqual([{ x: 3, y: 3 }, { x: 4, y: 3 }]);
   });
 
   it('содержит суставы для анимации и рабочие предметы персонала', () => {

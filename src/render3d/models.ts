@@ -21,6 +21,14 @@ function tableModel(): THREE.Group {
   return group;
 }
 
+function doubleTableModel(): THREE.Group {
+  const group = new THREE.Group();
+  box(group, [1.84, 0.12, 0.84], [0, 0.68, 0], wood);
+  for (const x of [-0.48, 0.48]) cylinder(group, 0.1, 0.58, [x, 0.34, 0], darkWood);
+  for (const x of [-0.48, 0.48]) cylinder(group, 0.17, 0.025, [x, 0.755, 0], cream);
+  return group;
+}
+
 function chairModel(): THREE.Group {
   const group = new THREE.Group();
   box(group, [0.54, 0.12, 0.54], [0, 0.4, 0], wood);
@@ -75,12 +83,13 @@ function doorModel(): THREE.Group {
 
 export function createFurnitureMesh(item: Furniture, skin: RestaurantSkin): THREE.Group {
   const group = item.kind === 'table' ? tableModel()
+    : item.kind === 'tableDouble' ? doubleTableModel()
     : item.kind === 'chair' ? chairModel()
       : item.kind === 'stove' ? stoveModel()
         : item.kind === 'counter' ? counterModel()
           : item.kind === 'plant' ? plantModel() : doorModel();
   const position = gridToWorld(item.position);
-  group.position.set(position.x, 0.09, position.z);
+  group.position.set(position.x + (item.kind === 'tableDouble' ? 0.5 : 0), 0.09, position.z);
   group.rotation.y = item.rotation * Math.PI / 180;
   group.userData.entityId = item.id;
   group.userData.skinId = skin.id;
@@ -144,24 +153,28 @@ export function createActorMesh(actor: Employee | Customer): THREE.Group {
 export function createRestaurantShell(width: number, height: number, skin: RestaurantSkin): THREE.Group {
   const group = new THREE.Group();
   group.userData.skinId = skin.id;
-  box(group, [width + 0.5, 0.35, height + 0.5], [0, -0.22, 0], skin.facade);
+  group.userData.width = width;
+  group.userData.height = height;
+  const offsetX = (width - 8) / 2;
+  const offsetZ = (height - 8) / 2;
+  box(group, [width + 0.5, 0.35, height + 0.5], [offsetX, -0.22, offsetZ], skin.facade);
   for (let y = 0; y < height; y += 1) for (let x = 0; x < width; x += 1) {
     const p = gridToWorld({ x, y });
     const color = new THREE.Color(skin.floor).offsetHSL(0, 0, (x + y) % 2 ? 0.035 : -0.015).getHex();
     box(group, [0.98, 0.12, 0.98], [p.x, 0, p.z], color);
   }
-  box(group, [width + 0.25, 2.2, 0.18], [0, 1.05, -height / 2 - 0.05], skin.wall);
-  box(group, [0.18, 2.2, height + 0.25], [-width / 2 - 0.05, 1.05, 0], skin.wall);
-  box(group, [width + 0.3, 0.16, 0.25], [0, 0.14, -height / 2 + 0.04], skin.trim);
-  box(group, [0.25, 0.16, height + 0.3], [-width / 2 + 0.04, 0.14, 0], skin.trim);
-  box(group, [width + 0.4, 0.18, 0.3], [0, 2.18, -height / 2 - 0.05], skin.trim);
-  box(group, [0.3, 0.18, height + 0.4], [-width / 2 - 0.05, 2.18, 0], skin.trim);
+  box(group, [width + 0.25, 2.2, 0.18], [offsetX, 1.05, -4.05], skin.wall);
+  box(group, [0.18, 2.2, height + 0.25], [-4.05, 1.05, offsetZ], skin.wall);
+  box(group, [width + 0.3, 0.16, 0.25], [offsetX, 0.14, -3.96], skin.trim);
+  box(group, [0.25, 0.16, height + 0.3], [-3.96, 0.14, offsetZ], skin.trim);
+  box(group, [width + 0.4, 0.18, 0.3], [offsetX, 2.18, -4.05], skin.trim);
+  box(group, [0.3, 0.18, height + 0.4], [-4.05, 2.18, offsetZ], skin.trim);
   for (const x of [-2.2, 1.5]) {
-    box(group, [1.65, 1.15, 0.07], [x, 1.2, -height / 2 + 0.06], 0x9dd4d7);
-    box(group, [1.8, 0.1, 0.12], [x, 1.8, -height / 2 + 0.1], skin.trim);
-    box(group, [0.09, 1.2, 0.12], [x, 1.2, -height / 2 + 0.1], skin.trim);
+    box(group, [1.65, 1.15, 0.07], [x, 1.2, -3.94], 0x9dd4d7);
+    box(group, [1.8, 0.1, 0.12], [x, 1.8, -3.9], skin.trim);
+    box(group, [0.09, 1.2, 0.12], [x, 1.2, -3.9], skin.trim);
   }
-  box(group, [2.25, 0.52, 0.18], [0.3, 2.55, -height / 2 - 0.02], skin.facade);
-  box(group, [1.75, 0.12, 0.2], [0.3, 2.55, -height / 2 + 0.09], cream);
+  box(group, [2.25, 0.52, 0.18], [offsetX + 0.3, 2.55, -4.02], skin.facade);
+  box(group, [1.75, 0.12, 0.2], [offsetX + 0.3, 2.55, -3.91], cream);
   return group;
 }
