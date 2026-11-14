@@ -1,0 +1,22 @@
+.editor-panel {
+  position: fixed;
+  z-index: 5;
+  right: 18px;
+  bottom: 74px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 9px;
+  width: min(360px, calc(100vw - 36px));
+  padding: 14px;
+  border: 2px solid #80563b;
+  border-radius: 14px;
+  background: #fff7e8f5;
+  color: #3d2d24;
+}
+.editor-panel strong, .editor-panel span { grid-column: 1 / -1; }
+.editor-panel button { padding: 10px; border: 1px solid #49703b; border-radius: 8px; background: #56824a; color: white; font-weight: 650; }
+.editor-panel button:disabled { opacity: 0.45; }
+.editor-panel button:last-child { grid-column: 1 / -1; background: #80563b; }
+@media (max-width: 600px) {
+  .editor-panel { right: 12px; bottom: 66px; left: 12px; width: auto; }
+}

@@ -89,7 +89,8 @@ export function createFurnitureMesh(item: Furniture, skin: RestaurantSkin): THRE
         : item.kind === 'counter' ? counterModel()
           : item.kind === 'plant' ? plantModel() : doorModel();
   const position = gridToWorld(item.position);
-  group.position.set(position.x + (item.kind === 'tableDouble' ? 0.5 : 0), 0.09, position.z);
+  const verticalDouble = item.kind === 'tableDouble' && (item.rotation === 90 || item.rotation === 270);
+  group.position.set(position.x + (item.kind === 'tableDouble' && !verticalDouble ? 0.5 : 0), 0.09, position.z + (verticalDouble ? 0.5 : 0));
   group.rotation.y = item.rotation * Math.PI / 180;
   group.userData.entityId = item.id;
   group.userData.skinId = skin.id;

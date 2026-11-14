@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { moveDoor, placeFurniture } from '../simulation/commands';
+import { moveDoor, moveFurniture, placeFurniture, removeFurniture, rotateFurniture } from '../simulation/commands';
 import { advanceSimulation } from '../simulation/tick';
+import { furnitureCells } from '../simulation/grid';
 import type { FurnitureKind, GameState } from '../simulation/types';
 import { gridToWorld, worldToGrid } from './coordinates';
 import { createActorMesh, createFurnitureMesh, createRestaurantShell } from './models';
@@ -11,6 +12,7 @@ export interface WorldCallbacks {
   onChange(): void;
   onPlacementEnd(): void;
   onPlacementError(reason: string): void;
+  onSelect(id: string | null, moving: boolean): void;
   onSecond(): void;
   onFrame(): void;
 }
@@ -25,6 +27,9 @@ export class RestaurantWorld {
   private floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   private placementKind: FurnitureKind | null = null;
   private doorMoveMode = false;
+  private editorMode = false;
+  private selectedId: string | null = null;
+  private editorMoving = false;
   private highlights: THREE.Mesh[] = [];
   private shell: THREE.Group;
   private frameId = 0;
@@ -95,6 +100,41 @@ export class RestaurantWorld {
     this.hideHighlights();
   }
 
+  setEditorMode(enabled: boolean): void {
+    this.cancelPlacement();
+    this.editorMode = enabled;
+    this.selectedId = null;
+    this.editorMoving = false;
+    this.accumulator = 0;
+    this.callbacks.onSelect(null, false);
+    this.renderer.domElement.style.cursor = enabled ? 'pointer' : 'default';
+  }
+
+  moveSelected(): void {
+    if (!this.selectedId) return;
+    this.editorMoving = !this.editorMoving;
+    this.renderer.domElement.style.cursor = this.editorMoving ? 'crosshair' : 'pointer';
+    this.callbacks.onSelect(this.selectedId, this.editorMoving);
+  }
+
+  rotateSelected(): void {
+    if (!this.selectedId) return;
+    const result = rotateFurniture(this.state, this.selectedId);
+    if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя повернуть');
+    this.callbacks.onChange();
+  }
+
+  removeSelected(): void {
+    if (!this.selectedId) return;
+    const result = removeFurniture(this.state, this.selectedId);
+    if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя удалить');
+    this.selectedId = null;
+    this.editorMoving = false;
+    this.hideHighlights();
+    this.callbacks.onSelect(null, false);
+    this.callbacks.onChange();
+  }
+
   start(): void {
     if (this.frameId) return;
     this.lastTime = performance.now();
@@ -119,11 +159,12 @@ export class RestaurantWorld {
   private animate = (time: number): void => {
     this.accumulator += Math.min(time - this.lastTime, 100);
     this.lastTime = time;
-    while (this.accumulator >= 1000) {
+    while (!this.editorMode && this.accumulator >= 1000) {
       advanceSimulation(this.state);
       this.callbacks.onSecond();
       this.accumulator -= 1000;
     }
+    if (this.editorMode) this.accumulator = 0;
     this.syncShell();
     this.syncEntities(time);
     this.renderer.render(this.scene, this.camera);
@@ -164,12 +205,17 @@ export class RestaurantWorld {
   }
 
   private onPointerMove = (event: PointerEvent): void => {
-    if (!this.placementKind && !this.doorMoveMode) return;
+    if (!this.placementKind && !this.doorMoveMode && !this.editorMoving) return;
     const point = this.gridFromPointer(event);
     if (!point) return this.hideHighlights();
-    const cells = this.placementKind === 'tableDouble' ? [point, { x: point.x + 1, y: point.y }] : [point];
+    const selected = this.state.furniture.find((item) => item.id === this.selectedId);
+    const cells = this.editorMoving && selected
+      ? furnitureCells({ ...selected, position: point })
+      : this.placementKind === 'tableDouble'
+        ? furnitureCells({ id: 'preview', kind: 'tableDouble', position: point, rotation: 0 })
+        : [point];
     const valid = cells.every((cell) => cell.x >= 0 && cell.y >= 0 && cell.x < this.state.width && cell.y < this.state.height &&
-      !this.state.furniture.some((item) => item.position.x === cell.x && item.position.y === cell.y)) &&
+      !this.state.furniture.some((item) => item.id !== this.selectedId && furnitureCells(item).some((occupied) => occupied.x === cell.x && occupied.y === cell.y))) &&
       (!this.doorMoveMode || point.x === 0 || point.y === 0 || point.x === this.state.width - 1 || point.y === this.state.height - 1);
     this.highlights.forEach((highlight, index) => {
       const cell = cells[index];
@@ -181,7 +227,40 @@ export class RestaurantWorld {
     });
   };
 
+  private selectFurniture(event: PointerEvent): void {
+    const bounds = this.renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
+    this.raycaster.setFromCamera(pointer, this.camera);
+    const models = this.state.furniture.filter((item) => item.kind !== 'door').map((item) => this.entities.get(item.id)).filter(Boolean) as THREE.Group[];
+    const hit = this.raycaster.intersectObjects(models, true)[0];
+    let object: THREE.Object3D | undefined = hit?.object;
+    while (object && !object.userData.entityId) object = (object.parent ?? undefined) as THREE.Object3D | undefined;
+    this.selectedId = object?.userData.entityId ?? null;
+    this.editorMoving = false;
+    this.hideHighlights();
+    const item = this.state.furniture.find((candidate) => candidate.id === this.selectedId);
+    if (item) furnitureCells(item).forEach((cell, index) => {
+      const position = gridToWorld(cell);
+      this.highlights[index].position.set(position.x, 0.12, position.z);
+      this.highlights[index].visible = true;
+      (this.highlights[index].material as THREE.MeshBasicMaterial).color.setHex(0x5ba8e0);
+    });
+    this.callbacks.onSelect(this.selectedId, false);
+  }
+
   private onPointer = (event: PointerEvent): void => {
+    if (this.editorMode) {
+      if (!this.editorMoving) return this.selectFurniture(event);
+      const point = this.gridFromPointer(event);
+      if (!point || !this.selectedId) return;
+      const result = moveFurniture(this.state, this.selectedId, point);
+      if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя переместить сюда');
+      this.editorMoving = false;
+      this.renderer.domElement.style.cursor = 'pointer';
+      this.callbacks.onSelect(this.selectedId, false);
+      this.callbacks.onChange();
+      return;
+    }
     if (!this.placementKind && !this.doorMoveMode) return;
     const point = this.gridFromPointer(event);
     if (!point) return;
@@ -204,7 +283,7 @@ export class RestaurantWorld {
     for (const item of this.state.furniture) {
       current.add(item.id);
       let model = this.entities.get(item.id);
-      const expected = `${item.position.x},${item.position.y}`;
+      const expected = `${item.position.x},${item.position.y},${item.rotation}`;
       if (model && model.userData.grid !== expected) {
         this.scene.remove(model);
         this.entities.delete(item.id);

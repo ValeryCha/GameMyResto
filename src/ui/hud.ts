@@ -1,7 +1,7 @@
 import type { GameState } from '../simulation/types';
 import { getHudModel } from '../simulation/selectors';
 
-export function createHud(onShop: () => void, onMenu: () => void, onCancel: () => void) {
+export function createHud(onShop: () => void, onMenu: () => void, onCancel: () => void, onEditor: () => void) {
   const root = document.createElement('section');
   root.hidden = true;
   root.setAttribute('aria-label', 'Показатели ресторана');
@@ -37,7 +37,11 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
   menu.className = 'hud-menu-button';
   menu.style.cssText = shop.style.cssText;
   menu.addEventListener('click', onMenu);
-  root.append(text, shop, menu, hint);
+  const editor = document.createElement('button');
+  editor.textContent = 'Обстановка';
+  editor.style.cssText = shop.style.cssText;
+  editor.addEventListener('click', onEditor);
+  root.append(text, shop, editor, menu, hint);
   document.body.append(root);
   return {
     update(state: GameState) {

@@ -26,6 +26,10 @@ describe('procedural models', () => {
     const bounds = new THREE.Box3().setFromObject(table);
     expect(bounds.max.x - bounds.min.x).toBeGreaterThan(1.7);
     expect(furnitureCells(item)).toEqual([{ x: 3, y: 3 }, { x: 4, y: 3 }]);
+    const vertical = createFurnitureMesh({ ...item, rotation: 90 as const }, classicSkin);
+    const verticalBounds = new THREE.Box3().setFromObject(vertical);
+    expect(verticalBounds.max.z - verticalBounds.min.z).toBeGreaterThan(1.7);
+    expect(vertical.position.z).toBe(0);
   });
 
   it('содержит суставы для анимации и рабочие предметы персонала', () => {
