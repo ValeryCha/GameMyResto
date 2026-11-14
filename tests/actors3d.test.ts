@@ -20,7 +20,7 @@ describe('анимация персонажей', () => {
     const model = createActorMesh({ id: 'guest', position: { x: 0, y: 0 }, state: 'seated', patience: 300 });
     updateActorVisual(model, { moving: false, seated: true, time: 1, delta: 1 });
     expect(model.userData.joints.leftLeg.rotation.x).toBeLessThan(-0.8);
-    expect(model.userData.seatOffset).toBeLessThan(0);
+    expect(model.userData.seatOffset).toBeCloseTo(0.22, 4);
     expect(model.userData.patienceRing).toBeInstanceOf(THREE.Object3D);
     expect(model.userData.patienceBack).toBeUndefined();
   });

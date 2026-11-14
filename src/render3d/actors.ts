@@ -20,7 +20,7 @@ export function updateActorVisual(model: THREE.Group, visual: ActorVisualState):
   joints.leftLeg.rotation.x = THREE.MathUtils.lerp(joints.leftLeg.rotation.x, visual.seated ? legTarget : -swing * 0.8, visual.seated ? 1 : visual.moving ? 1 : damping);
   joints.rightLeg.rotation.x = THREE.MathUtils.lerp(joints.rightLeg.rotation.x, visual.seated ? legTarget : swing * 0.8, visual.seated ? 1 : visual.moving ? 1 : damping);
   joints.head.rotation.y = THREE.MathUtils.lerp(joints.head.rotation.y, visual.moving ? Math.sin(visual.time * 2.2) * 0.25 : 0, damping);
-  model.userData.seatOffset = THREE.MathUtils.lerp(model.userData.seatOffset ?? 0, visual.seated ? -0.24 : 0, damping);
+  model.userData.seatOffset = THREE.MathUtils.lerp(model.userData.seatOffset ?? 0, visual.seated ? 0.22 : 0, damping);
   model.userData.bodyBob = visual.moving && !visual.seated ? Math.abs(Math.sin(visual.time * 9)) * 0.04 : 0;
   if (model.userData.carrying) model.userData.carrying.visible = Boolean(visual.carrying);
   if (model.userData.cooking) {
