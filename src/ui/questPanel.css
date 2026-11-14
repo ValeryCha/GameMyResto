@@ -1,42 +1,39 @@
 .quest-panel {
   position: fixed;
-  z-index: 2;
-  top: 16px;
-  right: 16px;
-  display: grid;
-  gap: 5px;
-  width: min(310px, calc(100vw - 32px));
-  padding: 13px 15px;
-  border: 2px solid #80563b;
-  border-radius: 14px;
-  background: #fff7e8ed;
+  z-index: 5;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(390px, 92vw);
+  height: 100dvh;
+  padding: 22px;
+  border-left: 3px solid #80563b;
+  background: #fff7e8;
   color: #3d2d24;
-  font: 14px/1.35 system-ui, sans-serif;
+  box-shadow: -12px 0 32px #49332233;
+  font: 15px/1.4 system-ui, sans-serif;
+  transform: translateX(105%);
+  transition: transform 220ms ease;
 }
-.quest-panel small { color: #8b4b2d; font-weight: 650; }
-.quest-toast {
-  position: fixed;
-  z-index: 8;
-  top: 130px;
-  right: 16px;
-  max-width: min(340px, calc(100vw - 32px));
-  padding: 14px 18px;
-  border: 2px solid #47764a;
-  border-radius: 14px;
-  background: #f2ffec;
-  color: #285233;
-  font: 700 15px/1.35 system-ui, sans-serif;
-  box-shadow: 0 6px 20px #3d2d2430;
-}
+.quest-panel.is-open { transform: translateX(0); }
+.progress-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 25px; }
+.progress-header button { border: 1px solid #80563b; border-radius: 9px; padding: 8px 11px; background: #fff; color: #3d2d24; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+.level-progress { display: grid; gap: 7px; margin: 18px 0; padding: 15px; border-radius: 12px; background: #f1dfc2; }
+.level-progress h2 { margin: 0; font-size: 21px; }
+.level-progress progress { width: 100%; height: 16px; accent-color: #56824a; }
+.quest-list { display: grid; gap: 10px; padding-right: 4px; overflow-y: auto; }
+.quest-item { display: grid; gap: 4px; padding: 12px; border: 2px solid transparent; border-radius: 11px; background: #fffdf7; }
+.quest-item strong { color: #80563b; }
+.quest-item small { color: #765b4b; font-weight: 650; }
+.quest-item.is-complete { opacity: .5; }
+.quest-item.is-active { border-color: #56824a; background: #eff8e8; }
+.quest-toast { position: fixed; z-index: 8; top: 24px; left: 50%; max-width: min(440px, calc(100vw - 32px)); padding: 14px 18px; border: 2px solid #47764a; border-radius: 14px; background: #f2ffec; color: #285233; font: 700 15px/1.35 system-ui, sans-serif; box-shadow: 0 6px 20px #3d2d2430; transform: translateX(-50%); pointer-events: none; }
 .quest-toast[hidden] { display: none; }
 @media (max-width: 600px) {
-  .quest-panel {
-    top: auto;
-    right: 12px;
-    bottom: 66px;
-    left: 12px;
-    width: auto;
-    padding: 10px 52px 10px 12px;
-    font-size: 12px;
-  }
+  .quest-panel { top: auto; bottom: 0; width: 100vw; height: min(76dvh, 650px); padding: 16px; border-top: 3px solid #80563b; border-left: 0; transform: translateY(105%); }
+  .quest-panel.is-open { transform: translateY(0); }
+  .level-progress { margin: 12px 0; padding: 11px; }
+  .quest-toast { top: 12px; }
 }
+@media (prefers-reduced-motion: reduce) { .quest-panel { transition: none; } }

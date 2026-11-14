@@ -1,7 +1,7 @@
 import type { GameState } from '../simulation/types';
 import { getHudModel } from '../simulation/selectors';
 
-export function createHud(onShop: () => void, onMenu: () => void, onCancel: () => void, onEditor: () => void) {
+export function createHud(onShop: () => void, onMenu: () => void, onCancel: () => void, onEditor: () => void, onProgress: () => void) {
   const root = document.createElement('section');
   root.hidden = true;
   root.setAttribute('aria-label', 'Показатели ресторана');
@@ -10,7 +10,7 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
   text.dataset.testid = 'hud-status';
   text.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 18px;font-weight:650';
   const values: Record<string, HTMLSpanElement> = {};
-  for (const [key, label] of [['level', 'Уровень'], ['coins', 'Монеты'], ['experience', 'Опыт'], ['popularity', 'Рейтинг'], ['guests', 'Гости']]) {
+  for (const [key, label] of [['coins', 'Монеты'], ['popularity', 'Рейтинг'], ['guests', 'Гости']]) {
     const item = document.createElement('span');
     item.textContent = `${label}: `;
     const value = document.createElement('span');
@@ -19,10 +19,19 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
     values[key] = value;
     text.append(item);
   }
-  const shop = document.createElement('button');
-  shop.textContent = 'Магазин';
-  shop.style.cssText = 'margin-top:12px;padding:9px 14px;border:1px solid #49703b;border-radius:9px;background:#56824a;color:white;font:600 14px system-ui,sans-serif;box-shadow:0 3px 0 #385631';
-  shop.addEventListener('click', onShop);
+  const buttonStyle = 'margin-top:12px;padding:9px 14px;border:1px solid #49703b;border-radius:9px;background:#56824a;color:white;font:600 14px system-ui,sans-serif;box-shadow:0 3px 0 #385631';
+  const makeButton = (label: string, callback: () => void) => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.style.cssText = buttonStyle;
+    button.addEventListener('click', callback);
+    return button;
+  };
+  const shop = makeButton('Магазин', onShop);
+  const editor = makeButton('Обстановка', onEditor);
+  const progress = makeButton('Прогресс', onProgress);
+  const menu = makeButton('Меню', onMenu);
+  menu.className = 'hud-menu-button';
   const hint = document.createElement('div');
   hint.hidden = true;
   hint.style.cssText = 'margin-top:10px;color:#8b4b2d;font-weight:600';
@@ -32,23 +41,12 @@ export function createHud(onShop: () => void, onMenu: () => void, onCancel: () =
   cancel.style.cssText = 'margin-left:10px;padding:5px 9px';
   cancel.addEventListener('click', onCancel);
   hint.append(hintText, cancel);
-  const menu = document.createElement('button');
-  menu.textContent = 'Меню';
-  menu.className = 'hud-menu-button';
-  menu.style.cssText = shop.style.cssText;
-  menu.addEventListener('click', onMenu);
-  const editor = document.createElement('button');
-  editor.textContent = 'Обстановка';
-  editor.style.cssText = shop.style.cssText;
-  editor.addEventListener('click', onEditor);
-  root.append(text, shop, editor, menu, hint);
+  root.append(text, shop, editor, progress, menu, hint);
   document.body.append(root);
   return {
     update(state: GameState) {
       const model = getHudModel(state);
-      values.level.textContent = String(model.level);
       values.coins.textContent = String(model.coins);
-      values.experience.textContent = String(model.experience);
       values.popularity.textContent = model.popularity;
       values.guests.textContent = String(model.guests);
     },

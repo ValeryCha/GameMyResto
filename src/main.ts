@@ -18,7 +18,7 @@ let state = storage.load();
 let world: RestaurantWorld | undefined;
 let editing = false;
 
-const hud = createHud(openShop, returnToMenu, () => cancelPlacement(), () => toggleEditor());
+const hud = createHud(openShop, returnToMenu, () => cancelPlacement(), () => toggleEditor(), openProgress);
 const quests = createQuestPanel();
 const editor = createEditorPanel({
   onMove: () => world?.moveSelected(),
@@ -63,13 +63,22 @@ function getSelectedId(): string | null { return selectedId; }
 
 function openShop(): void {
   if (editing) toggleEditor(false);
+  quests.close();
   shop.open();
+}
+
+function openProgress(): void {
+  if (editing) toggleEditor(false);
+  cancelPlacement();
+  shop.close();
+  quests.open();
 }
 
 function toggleEditor(force?: boolean): void {
   editing = force ?? !editing;
   cancelPlacement();
   shop.close();
+  quests.close();
   world?.setEditorMode(editing);
   editor.setVisible(editing);
 }
