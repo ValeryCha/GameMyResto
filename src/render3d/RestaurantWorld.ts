@@ -8,6 +8,7 @@ import { createActorMesh, createFurnitureMesh, createRestaurantShell } from './m
 import { updateActorVisual } from './actors';
 import { classicSkin } from './skins';
 import { fitZoom } from './cameraMath';
+import { createRestaurantEnvironment } from './environment';
 
 export interface WorldCallbacks {
   onChange(): void;
@@ -33,6 +34,7 @@ export class RestaurantWorld {
   private editorMoving = false;
   private highlights: THREE.Mesh[] = [];
   private shell: THREE.Group;
+  private environment: THREE.Group;
   private frameId = 0;
   private lastTime = 0;
   private accumulator = 0;
@@ -62,11 +64,8 @@ export class RestaurantWorld {
     sun.shadow.camera.top = 8;
     sun.shadow.camera.bottom = -8;
     this.scene.add(sun);
-    const ground = new THREE.Mesh(new THREE.CircleGeometry(24, 64), new THREE.MeshStandardMaterial({ color: 0xa8c9ad, roughness: 1 }));
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.42;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    this.environment = createRestaurantEnvironment(state.width, state.height);
+    this.scene.add(this.environment);
     this.shell = createRestaurantShell(state.width, state.height, classicSkin);
     this.scene.add(this.shell);
     for (let i = 0; i < 2; i += 1) {
@@ -268,6 +267,12 @@ export class RestaurantWorld {
     this.shell.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     this.shell = createRestaurantShell(this.state.width, this.state.height, classicSkin);
     this.scene.add(this.shell);
+    this.scene.remove(this.environment);
+    this.environment.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
+    this.environment = createRestaurantEnvironment(this.state.width, this.state.height);
+    this.scene.add(this.environment);
   }
 
   private resize(): void {
