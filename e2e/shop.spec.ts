@@ -12,7 +12,7 @@ test('магазин списывает точную цену и не плати
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.getByRole('button', { name: '+50 000 монет' }).click();
   await expect(hud).toContainText('Монеты: 51000');
-  await page.getByRole('button', { name: 'Закрыть' }).click();
+  await page.getByRole('complementary', { name: 'Магазин ресторана' }).getByRole('button', { name: 'Закрыть' }).click();
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
   await expect(page.getByTestId('menu-balance')).toContainText('51000');
   await page.reload();
