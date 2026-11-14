@@ -18,6 +18,10 @@ test('покупка растения, возврат в меню, продол�
   await expect(hud).toContainText('Монеты: 1000');
   await expect(hud).toContainText('Гости: 1');
   await page.screenshot({ path: 'artifacts/restaurant-3d-initial.png' });
+  await page.getByRole('button', { name: 'Отдалить камеру' }).click();
+  await page.getByRole('button', { name: 'Приблизить камеру' }).click();
+  await page.getByTestId('restaurant-canvas').locator('canvas').hover();
+  await page.mouse.wheel(0, 120);
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.getByRole('button', { name: 'Растение — 50 монет' }).click();

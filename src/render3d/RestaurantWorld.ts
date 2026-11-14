@@ -36,6 +36,8 @@ export class RestaurantWorld {
   private lastTime = 0;
   private accumulator = 0;
   private resizeObserver: ResizeObserver;
+  private zoom = 1;
+  private cameraControls: HTMLDivElement;
 
   constructor(private container: HTMLElement, private state: GameState, private callbacks: WorldCallbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -72,12 +74,41 @@ export class RestaurantWorld {
     }
     this.camera.position.set(11, 13, 11);
     this.camera.lookAt(0, 0.3, 0);
+    this.cameraControls = document.createElement('div');
+    this.cameraControls.style.cssText = 'position:absolute;right:16px;bottom:16px;z-index:5;display:grid;grid-template-columns:44px 44px;gap:8px';
+    for (const [label, title, action] of [['+', 'Приблизить камеру', () => this.zoomIn()], ['−', 'Отдалить камеру', () => this.zoomOut()]] as const) {
+      const button = document.createElement('button');
+      button.textContent = label;
+      button.setAttribute('aria-label', title);
+      button.style.cssText = 'width:44px;height:44px;border:2px solid #6b422d;border-radius:12px;background:#fff8e9;color:#3d2d24;font:bold 24px sans-serif;cursor:pointer;touch-action:manipulation';
+      button.addEventListener('pointerdown', (event) => event.stopPropagation());
+      button.addEventListener('click', action);
+      this.cameraControls.append(button);
+    }
+    container.append(this.cameraControls);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.renderer.domElement.addEventListener('pointerdown', this.onPointer);
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
     this.resize();
   }
+
+  zoomIn(): void {
+    this.zoom = Math.min(1.8, Math.round((this.zoom + 0.1) * 10) / 10);
+    this.resize();
+  }
+
+  zoomOut(): void {
+    this.zoom = Math.max(0.7, Math.round((this.zoom - 0.1) * 10) / 10);
+    this.resize();
+  }
+
+  private onWheel = (event: WheelEvent): void => {
+    event.preventDefault();
+    if (event.deltaY < 0) this.zoomIn();
+    else this.zoomOut();
+  };
 
   setPlacementMode(kind: FurnitureKind | null): void {
     this.placementKind = kind;
@@ -151,6 +182,8 @@ export class RestaurantWorld {
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointer);
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel);
+    this.cameraControls.remove();
     this.scene.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -185,7 +218,7 @@ export class RestaurantWorld {
     const height = Math.max(this.container.clientHeight, 1);
     const aspect = width / height;
     const roomHeight = Math.max(12, this.state.height + 4);
-    const viewHeight = aspect < 1 ? roomHeight / aspect : roomHeight;
+    const viewHeight = (aspect < 1 ? roomHeight / aspect : roomHeight) / this.zoom;
     const offsetX = (this.state.width - 8) / 2;
     const offsetZ = (this.state.height - 8) / 2;
     this.camera.position.set(11 + offsetX, 13, 11 + offsetZ);
