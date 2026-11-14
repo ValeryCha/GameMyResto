@@ -9,6 +9,7 @@ export class RestaurantScene extends Phaser.Scene {
     private state: GameState,
     private onChange: () => void = () => undefined,
     private onSecond: () => void = () => undefined,
+    private onFrame: () => void = () => undefined,
   ) { super('restaurant'); }
   private graphics!: Phaser.GameObjects.Graphics;
   private accumulator = 0;
@@ -34,6 +35,7 @@ export class RestaurantScene extends Phaser.Scene {
       this.accumulator -= 1_000;
     }
     this.draw();
+    this.onFrame();
   }
 
   private draw() {

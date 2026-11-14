@@ -8,9 +8,8 @@ const state = storage.load();
 const save = () => storage.save(state);
 const scene = new RestaurantScene(state, save, () => {
   if (state.tick % 10 === 0) save();
-});
+}, () => hud.update(state));
 const hud = createHud(() => scene.setPlantMode(true));
-scene.events.on(Phaser.Scenes.Events.POST_UPDATE, () => hud.update(state));
 
 new Phaser.Game({
   type: Phaser.AUTO,
