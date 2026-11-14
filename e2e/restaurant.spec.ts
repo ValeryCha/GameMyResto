@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-test('покупка растения, гости и сохранение после перезагрузки', async ({ page }) => {
+test('покупка, возврат в меню, продолжение и новая игра', async ({ page }) => {
+  test.setTimeout(60_000);
   const errors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -12,6 +13,7 @@ test('покупка растения, гости и сохранение пос
   });
 
   await page.goto('/');
+  await page.getByRole('button', { name: 'Играть' }).click();
   const hud = page.getByTestId('hud-status');
   await expect(hud).toContainText('Монеты: 1000');
   await expect(hud).toContainText('Гости: 1');
@@ -24,8 +26,21 @@ test('покупка растения, гости и сохранение пос
   await expect(hud).toContainText('Монеты: 950');
   await page.screenshot({ path: 'artifacts/restaurant-3d-planted.png' });
 
+  await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 950 монет');
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await expect(hud).toContainText('Монеты: 950');
+  await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  await page.getByRole('button', { name: 'Новая игра' }).click();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 950 монет');
+  await page.getByRole('button', { name: 'Новая игра' }).click();
+  await page.getByRole('button', { name: 'Начать заново' }).click();
+  await expect(hud).toContainText('Монеты: 1000');
+
   await page.reload();
-  await expect(page.getByTestId('hud-status')).toContainText('Монеты: 950');
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await expect(page.getByTestId('hud-status')).toContainText('Монеты: 1000');
   await page.setViewportSize({ width: 390, height: 844 });
   const plantButton = page.getByRole('button', { name: 'Купить растение — 50 монет' });
   await expect(plantButton).toBeVisible();
