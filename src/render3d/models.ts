@@ -135,18 +135,20 @@ export function createActorMesh(actor: Employee | Customer): THREE.Group {
   box(cooking, [0.28, 0.04, 0.05], [-0.19, 0, 0], darkWood);
   cooking.visible = false;
   group.add(cooking);
-  const patienceBack = box(group, [0.54, 0.075, 0.035], [0, 1.58, 0], 0x30383b);
-  const patienceFill = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.045, 0.045), new THREE.MeshBasicMaterial({ color: 0x62bd68 }));
-  patienceFill.position.set(0, 1.58, -0.025);
-  group.add(patienceFill);
-  patienceBack.visible = false;
-  patienceFill.visible = false;
+  const patienceRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.31, 0.39, 40),
+    new THREE.MeshBasicMaterial({ color: 0x62bd68, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }),
+  );
+  patienceRing.rotation.x = -Math.PI / 2;
+  patienceRing.position.y = 0.015;
+  patienceRing.visible = false;
+  group.add(patienceRing);
   group.userData.entityId = actor.id;
   group.userData.joints = { leftArm, rightArm, leftLeg, rightLeg, head };
   group.userData.carrying = carrying;
   group.userData.cooking = cooking;
-  group.userData.patienceBack = patienceBack;
-  group.userData.patienceFill = patienceFill;
+  group.userData.patienceRing = patienceRing;
+  group.userData.seatOffset = 0;
   return group;
 }
 

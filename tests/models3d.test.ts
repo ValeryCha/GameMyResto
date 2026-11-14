@@ -37,5 +37,8 @@ describe('procedural models', () => {
     expect(chef.userData.cooking).toBeInstanceOf(THREE.Object3D);
     expect(waiter.userData.carrying).toBeInstanceOf(THREE.Object3D);
     expect(waiter.userData.carrying.visible).toBe(false);
+    const guest = createActorMesh({ id: 'guest', position: { x: 0, y: 0 }, state: 'seated', patience: 300 });
+    expect(guest.userData.patienceRing).toBeInstanceOf(THREE.Mesh);
+    expect(guest.userData.patienceBack).toBeUndefined();
   });
 });

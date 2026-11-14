@@ -244,12 +244,19 @@ export class RestaurantWorld {
         model.rotation.y = Math.atan2(direction.x, direction.z);
       }
       const customer = 'state' in actor ? actor : undefined;
+      const seated = Boolean(customer && ['seated', 'ordering', 'waitingFood', 'eating'].includes(customer.state));
+      if (seated && customer?.seatId) {
+        const table = this.state.furniture.find((item) =>
+          (item.kind === 'table' || item.kind === 'tableDouble') &&
+          Math.abs(item.position.x - actor.position.x) + Math.abs(item.position.y - actor.position.y) === 1);
+        if (table) model.rotation.y = Math.atan2(table.position.x - actor.position.x, table.position.y - actor.position.y);
+      }
       const order = 'role' in actor && actor.taskId ? this.state.orders.find((item) => item.id === actor.taskId) : undefined;
-      const patience = customer && !['eating', 'leaving', 'ordering'].includes(customer.state)
+      const patience = customer && !['eating', 'leaving', 'ordering', 'seated'].includes(customer.state)
         ? (customer.state === 'waitingFood' ? (customer.foodWait ?? 120) / 120 : customer.patience / 300) : undefined;
-      updateActorVisual(model, { moving, time: time / 1000, delta: 1 / 60, patience,
+      updateActorVisual(model, { moving, seated, time: time / 1000, delta: 1 / 60, patience,
         carrying: order?.state === 'waitingDelivery' && order.pickedUp, cooking: order?.state === 'cooking' });
-      model.position.y += model.userData.bodyBob ?? 0;
+      model.position.y += (model.userData.bodyBob ?? 0) + (model.userData.seatOffset ?? 0);
     }
     for (const [id, model] of this.entities) {
       if (!current.has(id)) {
