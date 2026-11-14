@@ -33,5 +33,5 @@
 }
 @media (max-width: 600px) {
   .debug-toggle { right: 12px; bottom: 12px; }
-  .debug-panel { right: 12px; bottom: 66px; width: calc(100vw - 24px); }
+  .debug-panel { right: 12px; bottom: 200px; width: calc(100vw - 24px); max-height: 35vh; }
 }

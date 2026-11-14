@@ -184,7 +184,12 @@ export class RestaurantWorld {
     const width = Math.max(this.container.clientWidth, 1);
     const height = Math.max(this.container.clientHeight, 1);
     const aspect = width / height;
-    const viewHeight = aspect < 1 ? 12 / aspect : 12;
+    const roomHeight = Math.max(12, this.state.height + 4);
+    const viewHeight = aspect < 1 ? roomHeight / aspect : roomHeight;
+    const offsetX = (this.state.width - 8) / 2;
+    const offsetZ = (this.state.height - 8) / 2;
+    this.camera.position.set(11 + offsetX, 13, 11 + offsetZ);
+    this.camera.lookAt(offsetX, 0.3, offsetZ);
     this.camera.left = -viewHeight * aspect / 2;
     this.camera.right = viewHeight * aspect / 2;
     this.camera.top = viewHeight / 2;
