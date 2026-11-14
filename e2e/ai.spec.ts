@@ -23,10 +23,7 @@ test('гость садится на стул, получает суп и вып
   await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 685, y: 354 } });
   await expect(hud).toContainText('Монеты: 500');
 
-  await page.getByRole('button', { name: 'Состояние гостей' }).click();
-  const debug = page.getByLabel('Отладка состояния гостей');
-  await expect(debug).toContainText(/state=(seated|ordering|waitingFood)/, { timeout: 20_000 });
-  await expect(debug).toContainText('seat=chair-1');
+  await expect(page.getByTestId('restaurant-canvas')).toBeVisible();
   await page.screenshot({ path: 'artifacts/restaurant-guest-seated.png' });
   await expect(hud).toContainText('Монеты: 605', { timeout: 65_000 });
   await expect(hud).toContainText('Опыт: 40');
@@ -37,5 +34,9 @@ test('гость садится на стул, получает суп и вып
   await expect(page.getByTestId('menu-balance')).toContainText('Текущий баланс: 605 монет');
   await page.getByRole('button', { name: 'Играть' }).click();
   await expect(hud).toContainText('Опыт: 40');
+  await expect(page.getByRole('button', { name: 'Состояние гостей' })).toHaveCount(0);
+  await expect(page.getByLabel('Отладка состояния гостей')).toHaveCount(0);
+  await page.keyboard.press('KeyD');
+  await expect(page.getByLabel('Отладка состояния гостей')).toHaveCount(0);
   expect(errors).toEqual([]);
 });

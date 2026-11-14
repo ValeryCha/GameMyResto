@@ -18,8 +18,7 @@ test('уровень бесплатно расширяет ресторан и �
   await expect(page.getByLabel('Текущее задание')).toContainText('Задание 2: Новый рецепт');
   await expect(page.getByLabel('Текущее задание')).toContainText('60 опыта · 400 монет');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('button', { name: 'Состояние гостей' })).toBeInViewport();
-  await page.getByRole('button', { name: 'Состояние гостей' }).click();
-  await expect(page.getByLabel('Отладка состояния гостей')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Магазин', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Состояние гостей' })).toHaveCount(0);
   await page.screenshot({ path: 'artifacts/restaurant-progression-mobile.png' });
 });

@@ -6,7 +6,6 @@ import { CATALOG } from './content/coreContent';
 import { expandRestaurant, hireWaiter, increaseGuestLimit } from './simulation/shop';
 import type { FurnitureKind } from './simulation/types';
 import { createHud } from './ui/hud';
-import { createDebugPanel } from './ui/debugPanel';
 import { createQuestPanel } from './ui/questPanel';
 import { createEditorPanel } from './ui/editorPanel';
 import { createMainMenu } from './ui/mainMenu';
@@ -20,7 +19,6 @@ let world: RestaurantWorld | undefined;
 let editing = false;
 
 const hud = createHud(openShop, returnToMenu, () => cancelPlacement(), () => toggleEditor());
-const debug = createDebugPanel();
 const quests = createQuestPanel();
 const editor = createEditorPanel({
   onMove: () => world?.moveSelected(),
@@ -57,7 +55,6 @@ const menu = createMainMenu({
 });
 menu.setBalance(state.coins);
 menu.show();
-debug.setVisible(false);
 quests.setVisible(false);
 editor.setVisible(false);
 
@@ -86,7 +83,6 @@ function play(): void {
   container.hidden = false;
   hud.setVisible(true);
   shop.setVisible(true);
-  debug.setVisible(true);
   quests.setVisible(true);
   if (!world) {
     try {
@@ -99,7 +95,7 @@ function play(): void {
           editor.setSelected(state.furniture.find((item) => item.id === id) ?? null, moving);
         },
         onSecond: () => { if (state.tick % 10 === 0) storage.save(state); },
-        onFrame: () => { hud.update(state); shop.update(state); debug.update(state); quests.update(state); },
+        onFrame: () => { hud.update(state); shop.update(state); quests.update(state); },
       });
     } catch {
       container.textContent = 'Не удалось запустить 3D-режим. Проверьте, поддерживает ли браузер WebGL.';
@@ -124,7 +120,6 @@ function returnToMenu(): void {
   hud.setPlacement(null);
   hud.setVisible(false);
   shop.setVisible(false);
-  debug.setVisible(false);
   quests.setVisible(false);
   editor.setVisible(false);
   menu.setBalance(state.coins);
