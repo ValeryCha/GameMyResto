@@ -1,6 +1,7 @@
 import { DISHES } from '../content/dishes';
 import { QUESTS } from '../content/quests';
 import type { GameState } from './types';
+import { expandBounds } from './expansion';
 
 export const experienceThreshold = (level: number): number => 50 * level * (level + 1);
 
@@ -15,8 +16,7 @@ function ensureProgression(state: GameState): void {
 function applyLevels(state: GameState): void {
   while (state.level < 30 && state.experience >= experienceThreshold(state.level)) {
     state.level += 1;
-    state.width += 2;
-    state.height += 2;
+    expandBounds(state);
   }
 }
 

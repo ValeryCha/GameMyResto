@@ -1,4 +1,5 @@
 import type { CommandResult, GameState } from './types';
+import { expandBounds } from './expansion';
 
 function spend(state: GameState, price: number, rating: number): boolean {
   if (state.coins < price) return false;
@@ -28,8 +29,7 @@ export function increaseGuestLimit(state: GameState): CommandResult {
 
 export function expandRestaurant(state: GameState): CommandResult {
   if (!spend(state, 50000, 15)) return insufficient;
-  state.width += 2;
-  state.height += 2;
+  expandBounds(state);
   state.paidExpansions += 1;
   return { ok: true };
 }

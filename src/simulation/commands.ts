@@ -32,6 +32,7 @@ export function moveDoor(state: GameState, position: Point): CommandResult {
   state.coins -= 100;
   state.popularity = Math.min(100, state.popularity + 2);
   door.position = { ...position };
+  door.rotation = position.x === 0 ? 90 : position.x === state.width - 1 ? 270 : position.y === 0 ? 0 : 180;
   return { ok: true };
 }
 
