@@ -71,7 +71,7 @@ export function moveFurniture(state: GameState, id: string, position: Point): Co
 }
 
 export function rotateFurniture(state: GameState, id: string): CommandResult {
-  const item = editableItem(state, id);
+  const item = state.furniture.find((candidate) => candidate.id === id);
   if (!item) return { ok: false, reason: 'Объект не найден' };
   if (itemInUse(state, item)) return { ok: false, reason: 'Объект используется гостем или заказом' };
   const previous = item.rotation;

@@ -334,7 +334,7 @@ export class RestaurantWorld {
     const bounds = this.renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
     this.raycaster.setFromCamera(pointer, this.camera);
-    const models = this.state.furniture.filter((item) => item.kind !== 'door').map((item) => this.entities.get(item.id)).filter(Boolean) as THREE.Group[];
+    const models = this.state.furniture.map((item) => this.entities.get(item.id)).filter(Boolean) as THREE.Group[];
     const hit = this.raycaster.intersectObjects(models, true)[0];
     let object: THREE.Object3D | undefined = hit?.object;
     while (object && !object.userData.entityId) object = (object.parent ?? undefined) as THREE.Object3D | undefined;

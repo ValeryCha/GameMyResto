@@ -73,4 +73,14 @@ describe('редактирование мебели', () => {
     expect(state.customers[0].seatId).toBeUndefined();
     expect(state.customers[0].target).toBeUndefined();
   });
+
+  it('бесплатно вращает дверь, но не перемещает и не удаляет её', () => {
+    const state = createGame();
+    const door = state.furniture.find((item) => item.kind === 'door')!;
+    expect(rotateFurniture(state, door.id)).toEqual({ ok: true });
+    expect(door.rotation).toBe(90);
+    expect(state.coins).toBe(1000);
+    expect(moveFurniture(state, door.id, { x: 0, y: 6 }).ok).toBe(false);
+    expect(removeFurniture(state, door.id).ok).toBe(false);
+  });
 });

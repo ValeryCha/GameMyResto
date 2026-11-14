@@ -40,9 +40,9 @@ export function createEditorPanel(callbacks: EditorCallbacks) {
     setSelected(item: Furniture | null, moving = false) {
       title.textContent = item ? CATALOG[item.kind].name : 'Выберите предмет';
       hint.textContent = moving ? 'Выберите новую свободную клетку' : item ? 'Выберите действие' : 'Нажмите на мебель в ресторане';
-      move.disabled = !item;
+      move.disabled = !item || item.kind === 'door';
       rotate.disabled = !item;
-      remove.disabled = !item;
+      remove.disabled = !item || item.kind === 'door';
       move.textContent = moving ? 'Отменить перемещение' : 'Переместить';
     },
   };
