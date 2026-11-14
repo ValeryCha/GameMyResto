@@ -5,7 +5,11 @@ import { placeFurniture } from '../simulation/commands';
 import { gridToScreen, screenToGrid } from './iso';
 
 export class RestaurantScene extends Phaser.Scene {
-  constructor(private state: GameState) { super('restaurant'); }
+  constructor(
+    private state: GameState,
+    private onChange: () => void = () => undefined,
+    private onSecond: () => void = () => undefined,
+  ) { super('restaurant'); }
   private graphics!: Phaser.GameObjects.Graphics;
   private accumulator = 0;
   private plantMode = false;
@@ -17,13 +21,18 @@ export class RestaurantScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!this.plantMode) return;
       this.plantMode = false;
-      placeFurniture(this.state, 'plant', screenToGrid(pointer.position));
+      const result = placeFurniture(this.state, 'plant', screenToGrid(pointer.position));
+      if (result.ok) this.onChange();
     });
   }
 
   update(_time: number, delta: number) {
     this.accumulator += delta;
-    while (this.accumulator >= 1_000) { advanceSimulation(this.state); this.accumulator -= 1_000; }
+    while (this.accumulator >= 1_000) {
+      advanceSimulation(this.state);
+      this.onSecond();
+      this.accumulator -= 1_000;
+    }
     this.draw();
   }
 

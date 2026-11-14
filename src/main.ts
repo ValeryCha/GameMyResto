@@ -1,10 +1,14 @@
 import Phaser from 'phaser';
-import { createGame } from './simulation/createGame';
+import { LocalStorageAdapter } from './persistence/localStorageAdapter';
 import { RestaurantScene } from './render/RestaurantScene';
 import { createHud } from './ui/hud';
 
-const state = createGame();
-const scene = new RestaurantScene(state);
+const storage = new LocalStorageAdapter(window.localStorage);
+const state = storage.load();
+const save = () => storage.save(state);
+const scene = new RestaurantScene(state, save, () => {
+  if (state.tick % 10 === 0) save();
+});
 const hud = createHud(() => scene.setPlantMode(true));
 scene.events.on(Phaser.Scenes.Events.POST_UPDATE, () => hud.update(state));
 
