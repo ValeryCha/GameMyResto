@@ -12,7 +12,8 @@ const heuristic = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b
 
 export function isWalkable(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height &&
-    !state.furniture.some((item) => furnitureCells(item).some((cell) => samePoint(cell, point)));
+    !state.furniture.some((item) => item.kind !== 'chair' &&
+      furnitureCells(item).some((cell) => samePoint(cell, point)));
 }
 
 export function findPath(state: GameState, from: Point, to: Point): Point[] {

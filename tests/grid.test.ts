@@ -16,6 +16,19 @@ describe('grid', () => {
     expect(path).not.toContainEqual({ x: 1, y: 1 });
   });
 
+  it('allows paths through free chairs but not tables or the counter', () => {
+    const state = createGame();
+    state.furniture.push({ id: 'counter-1', kind: 'counter', position: { x: 4, y: 6 }, rotation: 0 });
+    state.furniture.find((item) => item.id === 'chair-1')!.position = { x: 3, y: 3 };
+    expect(isWalkable(state, { x: 3, y: 3 })).toBe(true);
+    expect(isWalkable(state, { x: 5, y: 4 })).toBe(false);
+    expect(isWalkable(state, { x: 4, y: 6 })).toBe(false);
+    expect(isWalkable(state, { x: 0, y: 7 })).toBe(false);
+    const path = findPath(state, { x: 3, y: 4 }, { x: 3, y: 2 });
+    expect(path).toContainEqual({ x: 3, y: 3 });
+    expect(path.at(-1)).toEqual({ x: 3, y: 2 });
+  });
+
   it('returns an empty path for an enclosed target', () => {
     const state = createGame();
     state.furniture.push(

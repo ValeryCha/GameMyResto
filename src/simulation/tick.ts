@@ -130,7 +130,7 @@ function updateCustomer(state: GameState, guest: Customer): void {
   }
 
   if (guest.state === 'seekingSeat' && guest.target) {
-    const movement = moveToward(state, guest, guest.target, true);
+    const movement = moveToward(state, guest, guest.target);
     if (movement === 'arrived') {
       guest.state = 'seated';
       guest.target = undefined;
