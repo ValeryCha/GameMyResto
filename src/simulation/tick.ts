@@ -213,7 +213,8 @@ function updateWaiter(state: GameState, waiter: Employee): void {
   }
   const chair = state.furniture.find((item) => item.id === guest.seatId);
   const target = chair
-    ? adjacentCells(state, chair).filter((point) => !samePoint(point, guest.position))
+    ? adjacentCells(state, chair).filter((point) => !samePoint(point, guest.position) &&
+      ![...state.employees, ...state.customers].some((other) => other.id !== waiter.id && samePoint(other.position, point)))
       .sort((a, b) => Math.abs(a.x - waiter.position.x) + Math.abs(a.y - waiter.position.y) - Math.abs(b.x - waiter.position.x) - Math.abs(b.y - waiter.position.y))[0]
     : nearestCell(state, waiter, { id: guest.id, kind: 'plant', position: guest.position, rotation: 0 });
   if (target && moveToward(state, waiter, target) === 'arrived') {
