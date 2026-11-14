@@ -1,22 +1,21 @@
-import Phaser from 'phaser';
 import { LocalStorageAdapter } from './persistence/localStorageAdapter';
-import { RestaurantScene } from './render/RestaurantScene';
+import { RestaurantWorld } from './render3d/RestaurantWorld';
 import { createHud } from './ui/hud';
 
 const storage = new LocalStorageAdapter(window.localStorage);
 const state = storage.load();
-const save = () => storage.save(state);
-const scene = new RestaurantScene(state, save, () => {
-  if (state.tick % 10 === 0) save();
-}, () => hud.update(state));
-const hud = createHud(() => scene.setPlantMode(true));
+const container = document.querySelector<HTMLElement>('#game')!;
+const hud = createHud(() => world.setPlantMode(true));
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  width: 960,
-  height: 640,
-  backgroundColor: '#b9d9c2',
-  scene,
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-});
+let world: RestaurantWorld;
+try {
+  world = new RestaurantWorld(container, state, {
+    onChange: () => storage.save(state),
+    onSecond: () => { if (state.tick % 10 === 0) storage.save(state); },
+    onFrame: () => hud.update(state),
+  });
+  world.start();
+} catch {
+  container.textContent = 'Не удалось запустить 3D-режим. Проверьте, поддерживает ли браузер WebGL.';
+  container.style.cssText = 'display:grid;place-items:center;padding:24px;color:#3d2d24;font:20px sans-serif';
+}

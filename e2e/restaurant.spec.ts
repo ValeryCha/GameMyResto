@@ -15,12 +15,12 @@ test('покупка растения, гости и сохранение пос
   const hud = page.getByTestId('hud-status');
   await expect(hud).toContainText('Монеты: 1000');
   await expect(hud).toContainText('Гости: 1');
-  await page.screenshot({ path: 'artifacts/restaurant-initial.png' });
+  await page.screenshot({ path: 'artifacts/restaurant-3d-initial.png' });
 
   await page.getByRole('button', { name: 'Купить растение — 50 монет' }).click();
-  await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 432, y: 160 } });
+  await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 685, y: 354 } });
   await expect(hud).toContainText('Монеты: 950');
-  await page.screenshot({ path: 'artifacts/restaurant-planted.png' });
+  await page.screenshot({ path: 'artifacts/restaurant-3d-planted.png' });
 
   await page.reload();
   await expect(page.getByTestId('hud-status')).toContainText('Монеты: 950');
