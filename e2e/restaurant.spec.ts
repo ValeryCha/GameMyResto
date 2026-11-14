@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('покупка, возврат в меню, продолжение и новая игра', async ({ page }) => {
+test('покупка растения, возврат в меню, продолжение и новая игра', async ({ page }) => {
   test.setTimeout(60_000);
   const errors: string[] = [];
   page.on('console', (message) => {
@@ -19,10 +19,11 @@ test('покупка, возврат в меню, продолжение и но
   await expect(hud).toContainText('Гости: 1');
   await page.screenshot({ path: 'artifacts/restaurant-3d-initial.png' });
 
-  await page.getByRole('button', { name: 'Купить растение — 50 монет' }).click();
-  await expect(page.getByText('Выберите свободную клетку')).toBeVisible();
+  await page.getByRole('button', { name: 'Магазин', exact: true }).click();
+  await page.getByRole('button', { name: 'Растение — 50 монет' }).click();
+  await expect(page.getByText(/Выберите клетку/)).toBeVisible();
   await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 685, y: 354 } });
-  await expect(page.getByText('Выберите свободную клетку')).toBeHidden();
+  await expect(page.getByText(/Выберите клетку/)).toBeHidden();
   await expect(hud).toContainText('Монеты: 950');
   await page.screenshot({ path: 'artifacts/restaurant-3d-planted.png' });
 
@@ -40,9 +41,12 @@ test('покупка, возврат в меню, продолжение и но
 
   await page.reload();
   await page.getByRole('button', { name: 'Играть' }).click();
-  await expect(page.getByTestId('hud-status')).toContainText('Монеты: 1000');
+  await expect(hud).toContainText('Монеты: 1000');
   await page.setViewportSize({ width: 390, height: 844 });
-  const plantButton = page.getByRole('button', { name: 'Купить растение — 50 монет' });
+  const shopButton = page.getByRole('button', { name: 'Магазин', exact: true });
+  await expect(shopButton).toBeVisible();
+  await shopButton.click();
+  const plantButton = page.getByRole('button', { name: 'Растение — 50 монет' });
   await expect(plantButton).toBeVisible();
   await expect(page.getByTestId('restaurant-canvas').locator('canvas')).toBeVisible();
   const buttonBounds = await plantButton.boundingBox();
