@@ -16,8 +16,9 @@ export function isWalkable(state: GameState, point: Point): boolean {
       furnitureCells(item).some((cell) => samePoint(cell, point)));
 }
 
-export function findPath(state: GameState, from: Point, to: Point): Point[] {
+export function findPath(state: GameState, from: Point, to: Point, occupied: Point[] = []): Point[] {
   if (to.x < 0 || to.y < 0 || to.x >= state.width || to.y >= state.height) return [];
+  if (occupied.some((point) => samePoint(point, to))) return [];
   const open: Point[] = [from];
   const cameFrom = new Map<string, Point>();
   const g = new Map<string, number>([[key(from), 0]]);
@@ -38,6 +39,7 @@ export function findPath(state: GameState, from: Point, to: Point): Point[] {
     }
     for (const direction of directions) {
       const next = { x: current.x + direction.x, y: current.y + direction.y };
+      if (occupied.some((point) => samePoint(point, next))) continue;
       if (!isWalkable(state, next) && !samePoint(next, to)) continue;
       const tentative = (g.get(key(current)) ?? Infinity) + 1;
       if (tentative >= (g.get(key(next)) ?? Infinity)) continue;

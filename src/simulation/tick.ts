@@ -134,9 +134,6 @@ function updateCustomer(state: GameState, guest: Customer): void {
     if (movement === 'arrived') {
       guest.state = 'seated';
       guest.target = undefined;
-    } else if (movement === 'blocked') {
-      guest.seatId = undefined;
-      guest.target = undefined;
     }
     return;
   }

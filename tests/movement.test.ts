@@ -8,8 +8,8 @@ describe('безопасное перемещение', () => {
     const state = createGame();
     const actor = state.employees[0];
     state.customers.push({ id: 'blocker', position: { x: 2, y: 3 }, state: 'waitingFood', patience: 300 });
-    expect(moveToward(state, actor, { x: 2, y: 4 })).toBe('blocked');
-    expect(actor.position).toEqual({ x: 2, y: 2 });
+    expect(moveToward(state, actor, { x: 2, y: 4 })).toBe('moving');
+    expect(actor.position).not.toEqual({ x: 2, y: 3 });
   });
 
   it('не телепортирует при заблокированной цели', () => {

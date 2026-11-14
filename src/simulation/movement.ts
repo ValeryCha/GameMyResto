@@ -6,10 +6,11 @@ export type MoveResult = 'arrived' | 'moving' | 'blocked';
 export function moveToward(state: GameState, actor: { id?: string; position: Point }, target: Point, allowFurnitureTarget = false): MoveResult {
   if (samePoint(actor.position, target)) return 'arrived';
   if (!allowFurnitureTarget && !isWalkable(state, target)) return 'blocked';
-  const path = findPath(state, actor.position, target);
+  const occupied = [...state.employees, ...state.customers]
+    .filter((other) => other.id !== actor.id)
+    .map((other) => other.position);
+  const path = findPath(state, actor.position, target, occupied);
   if (!path.length) return 'blocked';
-  const occupied = [...state.employees, ...state.customers].some((other) => other.id !== actor.id && samePoint(other.position, path[0]));
-  if (occupied) return 'blocked';
   actor.position = { ...path[0] };
   return samePoint(actor.position, target) ? 'arrived' : 'moving';
 }
