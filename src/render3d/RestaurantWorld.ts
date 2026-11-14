@@ -8,6 +8,7 @@ import { classicSkin } from './skins';
 
 export interface WorldCallbacks {
   onChange(): void;
+  onPlacementEnd(): void;
   onSecond(): void;
   onFrame(): void;
 }
@@ -104,7 +105,7 @@ export class RestaurantWorld {
     const width = Math.max(this.container.clientWidth, 1);
     const height = Math.max(this.container.clientHeight, 1);
     const aspect = width / height;
-    const viewHeight = aspect < 1 ? 15 : 12;
+    const viewHeight = aspect < 1 ? 12 / aspect : 12;
     this.camera.left = -viewHeight * aspect / 2;
     this.camera.right = viewHeight * aspect / 2;
     this.camera.top = viewHeight / 2;
@@ -116,6 +117,7 @@ export class RestaurantWorld {
   private onPointer = (event: PointerEvent): void => {
     if (!this.plantMode) return;
     this.plantMode = false;
+    this.callbacks.onPlacementEnd();
     this.renderer.domElement.style.cursor = 'default';
     const bounds = this.renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2(

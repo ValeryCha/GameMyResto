@@ -18,16 +18,24 @@ test('покупка растения, гости и сохранение пос
   await page.screenshot({ path: 'artifacts/restaurant-3d-initial.png' });
 
   await page.getByRole('button', { name: 'Купить растение — 50 монет' }).click();
+  await expect(page.getByText('Выберите свободную клетку')).toBeVisible();
   await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 685, y: 354 } });
+  await expect(page.getByText('Выберите свободную клетку')).toBeHidden();
   await expect(hud).toContainText('Монеты: 950');
   await page.screenshot({ path: 'artifacts/restaurant-3d-planted.png' });
 
   await page.reload();
   await expect(page.getByTestId('hud-status')).toContainText('Монеты: 950');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('button', { name: 'Купить растение — 50 монет' })).toBeVisible();
+  const plantButton = page.getByRole('button', { name: 'Купить растение — 50 монет' });
+  await expect(plantButton).toBeVisible();
   await expect(page.getByTestId('restaurant-canvas').locator('canvas')).toBeVisible();
-  await page.screenshot({ path: 'artifacts/restaurant-mobile.png' });
+  const buttonBounds = await plantButton.boundingBox();
+  const hudBounds = await hud.boundingBox();
+  expect(buttonBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(390);
+  expect(hudBounds!.x + hudBounds!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: 'artifacts/restaurant-3d-mobile.png' });
 
   expect(errors).toEqual([]);
   expect(failedResponses).toEqual([]);
