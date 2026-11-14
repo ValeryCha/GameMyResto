@@ -7,6 +7,7 @@ import { gridToWorld, worldToGrid } from './coordinates';
 import { createActorMesh, createFurnitureMesh, createRestaurantShell } from './models';
 import { updateActorVisual } from './actors';
 import { classicSkin } from './skins';
+import { fitZoom } from './cameraMath';
 
 export interface WorldCallbacks {
   onChange(): void;
@@ -39,7 +40,7 @@ export class RestaurantWorld {
   private zoom = 1;
   private cameraControls: HTMLDivElement;
   private pan = new THREE.Vector3();
-  private drag: { id: number; x: number; y: number; startX: number; startY: number } | null = null;
+  private drag: { id: number; startX: number; startY: number; floorPoint: THREE.Vector3 | null } | null = null;
 
   constructor(private container: HTMLElement, private state: GameState, private callbacks: WorldCallbacks) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -106,7 +107,8 @@ export class RestaurantWorld {
 
   private resetView(): void {
     this.pan.set(0, 0, 0);
-    this.zoom = 1;
+    const aspect = Math.max(this.container.clientWidth, 1) / Math.max(this.container.clientHeight, 1);
+    this.zoom = fitZoom(this.state.width, this.state.height, aspect);
     this.resize();
   }
 
@@ -149,7 +151,9 @@ export class RestaurantWorld {
   }
 
   zoomOut(): void {
-    this.zoom = Math.max(0.7, Math.round((this.zoom - 0.1) * 10) / 10);
+    const aspect = Math.max(this.container.clientWidth, 1) / Math.max(this.container.clientHeight, 1);
+    const minimum = fitZoom(this.state.width, this.state.height, aspect);
+    this.zoom = Math.max(minimum, Math.round((this.zoom - 0.1) * 10) / 10);
     this.resize();
   }
 
@@ -285,12 +289,16 @@ export class RestaurantWorld {
     this.renderer.setSize(width, height);
   }
 
-  private gridFromPointer(event: PointerEvent) {
+  private floorFromPointer(event: PointerEvent): THREE.Vector3 | null {
     const bounds = this.renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
     this.raycaster.setFromCamera(pointer, this.camera);
-    const intersection = new THREE.Vector3();
-    if (!this.raycaster.ray.intersectPlane(this.floorPlane, intersection)) return null;
+    return this.raycaster.ray.intersectPlane(this.floorPlane, new THREE.Vector3());
+  }
+
+  private gridFromPointer(event: PointerEvent) {
+    const intersection = this.floorFromPointer(event);
+    if (!intersection) return null;
     const point = worldToGrid(intersection);
     if (point.x < 0 || point.y < 0 || point.x >= this.state.width || point.y >= this.state.height) return null;
     return point;
@@ -298,14 +306,14 @@ export class RestaurantWorld {
 
   private onPointerMove = (event: PointerEvent): void => {
     if (this.drag?.id === event.pointerId) {
-      const scale = Math.max(12, this.state.height + 4) / this.zoom / Math.max(this.renderer.domElement.clientHeight, 1);
-      const dx = (event.clientX - this.drag.x) * scale;
-      const dy = (event.clientY - this.drag.y) * scale;
-      this.pan.x -= (dx - dy) / Math.sqrt(2);
-      this.pan.z -= (dx + dy) / Math.sqrt(2);
-      this.drag = { ...this.drag, x: event.clientX, y: event.clientY };
+      const current = this.floorFromPointer(event);
+      if (current && this.drag.floorPoint) {
+        this.pan.x += this.drag.floorPoint.x - current.x;
+        this.pan.z += this.drag.floorPoint.z - current.z;
+      }
       this.clampPan();
       this.resize();
+      this.drag.floorPoint = this.floorFromPointer(event);
       return;
     }
     if (!this.placementKind && !this.doorMoveMode && !this.editorMoving) return;
@@ -365,7 +373,7 @@ export class RestaurantWorld {
     }
     if (!this.placementKind && !this.doorMoveMode) {
       if (event.button !== 0) return;
-      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY };
+      this.drag = { id: event.pointerId, startX: event.clientX, startY: event.clientY, floorPoint: this.floorFromPointer(event) };
       this.renderer.domElement.setPointerCapture(event.pointerId);
       this.renderer.domElement.style.cursor = 'grabbing';
       return;
