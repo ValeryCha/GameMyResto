@@ -14,6 +14,11 @@ describe('procedural models', () => {
     expect(createActorMesh({ id: 'guest', position: { x: 0, y: 0 }, state: 'entering', patience: 10 }).children.length).toBeGreaterThan(3);
   });
 
+  it('показывает стойку выдачи низким рабочим столом, а не дверью', () => {
+    const counter = createFurnitureMesh({ id: 'counter', kind: 'counter', position: { x: 0, y: 0 }, rotation: 0 }, classicSkin);
+    expect(new THREE.Box3().setFromObject(counter).max.y).toBeLessThan(1.2);
+  });
+
   it('содержит суставы для анимации и рабочие предметы персонала', () => {
     const chef = createActorMesh({ id: 'chef', role: 'chef', position: { x: 0, y: 0 }, energy: 100 });
     const waiter = createActorMesh({ id: 'waiter', role: 'waiter', position: { x: 0, y: 0 }, energy: 100 });

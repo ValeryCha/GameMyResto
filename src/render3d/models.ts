@@ -54,6 +54,15 @@ function plantModel(): THREE.Group {
   return group;
 }
 
+function counterModel(): THREE.Group {
+  const group = new THREE.Group();
+  box(group, [0.9, 0.72, 0.72], [0, 0.36, 0], wood);
+  box(group, [0.98, 0.1, 0.8], [0, 0.77, 0], cream);
+  box(group, [0.72, 0.08, 0.03], [0, 0.48, 0.375], darkWood);
+  cylinder(group, 0.17, 0.025, [0, 0.835, 0], cream);
+  return group;
+}
+
 function doorModel(): THREE.Group {
   const group = new THREE.Group();
   box(group, [0.12, 1.65, 0.14], [-0.45, 0.83, 0], darkWood);
@@ -68,7 +77,8 @@ export function createFurnitureMesh(item: Furniture, skin: RestaurantSkin): THRE
   const group = item.kind === 'table' ? tableModel()
     : item.kind === 'chair' ? chairModel()
       : item.kind === 'stove' ? stoveModel()
-        : item.kind === 'plant' ? plantModel() : doorModel();
+        : item.kind === 'counter' ? counterModel()
+          : item.kind === 'plant' ? plantModel() : doorModel();
   const position = gridToWorld(item.position);
   group.position.set(position.x, 0.09, position.z);
   group.rotation.y = item.rotation * Math.PI / 180;
