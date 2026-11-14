@@ -54,6 +54,7 @@ test('покупка растения, возврат в меню, продол�
   await page.getByRole('button', { name: 'Играть' }).click();
   await expect(hud).toContainText('Монеты: 1000');
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'artifacts/restaurant-3d-mobile.png' });
   const shopButton = page.getByRole('button', { name: 'Магазин', exact: true });
   await expect(shopButton).toBeVisible();
   await shopButton.click();
@@ -65,7 +66,6 @@ test('покупка растения, возврат в меню, продол�
   expect(buttonBounds!.x).toBeGreaterThanOrEqual(0);
   expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(390);
   expect(hudBounds!.x + hudBounds!.width).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: 'artifacts/restaurant-3d-mobile.png' });
 
   expect(errors).toEqual([]);
   expect(failedResponses).toEqual([]);
