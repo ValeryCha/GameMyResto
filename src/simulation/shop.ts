@@ -7,6 +7,10 @@ function spend(state: GameState, price: number, rating: number): boolean {
   return true;
 }
 
+export function addTestFunds(state: GameState): void {
+  state.coins += 50000;
+}
+
 const insufficient = { ok: false as const, reason: 'Недостаточно монет' };
 
 export function hireWaiter(state: GameState): CommandResult {

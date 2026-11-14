@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
-import { expandRestaurant, hireWaiter, increaseGuestLimit } from '../src/simulation/shop';
+import { addTestFunds, expandRestaurant, hireWaiter, increaseGuestLimit } from '../src/simulation/shop';
 import { moveDoor, placeFurniture } from '../src/simulation/commands';
 
  describe('магазин и рейтинг', () => {
+  it('временно добавляет 50000 монет без изменения опыта и рейтинга', () => {
+    const state = createGame();
+    addTestFunds(state);
+    expect(state.coins).toBe(51000);
+    expect(state.experience).toBe(0);
+    expect(state.popularity).toBe(10);
+  });
+
   it('покупает стол 1×1 за 100 и повышает рейтинг', () => {
     const state = createGame();
     expect(placeFurniture(state, 'table', { x: 3, y: 5 }).ok).toBe(true);

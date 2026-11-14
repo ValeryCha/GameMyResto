@@ -3,7 +3,7 @@ import { LocalStorageAdapter } from './persistence/localStorageAdapter';
 import { RestaurantWorld } from './render3d/RestaurantWorld';
 import { createGame } from './simulation/createGame';
 import { CATALOG } from './content/coreContent';
-import { expandRestaurant, hireWaiter, increaseGuestLimit } from './simulation/shop';
+import { addTestFunds, expandRestaurant, hireWaiter, increaseGuestLimit } from './simulation/shop';
 import type { FurnitureKind } from './simulation/types';
 import { createHud } from './ui/hud';
 import { createQuestPanel } from './ui/questPanel';
@@ -37,6 +37,7 @@ const shop = createShopPanel({
   onHire: () => { hireWaiter(state); storage.save(state); },
   onLimit: () => { increaseGuestLimit(state); storage.save(state); },
   onExpand: () => { expandRestaurant(state); storage.save(state); },
+  onTestFunds: () => { addTestFunds(state); storage.save(state); },
   onPlace: (kind: FurnitureKind) => {
     shop.close();
     world?.setPlacementMode(kind);

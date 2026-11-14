@@ -29,6 +29,7 @@ export interface ShopCallbacks {
   onExpand(): void;
   onPlace(kind: FurnitureKind): void;
   onMoveDoor(): void;
+  onTestFunds(): void;
 }
 
 export function createShopPanel(callbacks: ShopCallbacks) {
@@ -70,6 +71,15 @@ export function createShopPanel(callbacks: ShopCallbacks) {
     }
     root.append(section);
   }
+  const testSection = document.createElement('section');
+  const testHeading = document.createElement('h3');
+  testHeading.textContent = 'Для тестирования';
+  const testButton = document.createElement('button');
+  testButton.className = 'shop-item';
+  testButton.textContent = '+50 000 монет';
+  testButton.addEventListener('click', callbacks.onTestFunds);
+  testSection.append(testHeading, testButton);
+  root.append(testSection);
   document.body.append(root);
   return {
     update(state: GameState) {

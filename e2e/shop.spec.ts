@@ -10,6 +10,23 @@ test('магазин списывает точную цену и не плати
   const canvas = page.getByTestId('restaurant-canvas').locator('canvas');
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
+  await page.getByRole('button', { name: '+50 000 монет' }).click();
+  await expect(hud).toContainText('Монеты: 51000');
+  await page.getByRole('button', { name: 'Закрыть' }).click();
+  await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  await expect(page.getByTestId('menu-balance')).toContainText('51000');
+  await page.reload();
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await expect(hud).toContainText('Монеты: 51000');
+  await page.evaluate(() => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
+    save.state.coins = 1000;
+    localStorage.setItem('moy-restoran:primary', JSON.stringify(save));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Играть' }).click();
+
+  await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.getByRole('button', { name: 'Стол 1×1 — 100 монет' }).click();
   await canvas.click({ position: { x: 685, y: 354 } });
   await expect(hud).toContainText('Монеты: 900');
