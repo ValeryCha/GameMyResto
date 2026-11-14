@@ -1,5 +1,5 @@
 export type Role = 'chef' | 'waiter';
-export type FurnitureKind = 'door' | 'stove' | 'table' | 'chair' | 'plant' | 'counter';
+export type FurnitureKind = 'door' | 'stove' | 'table' | 'tableDouble' | 'chair' | 'plant' | 'counter';
 export interface Point { x: number; y: number }
 export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point; taskId?: string }
 export interface Furniture { id: string; kind: FurnitureKind; position: Point; rotation: 0 | 90 | 180 | 270 }
@@ -12,8 +12,8 @@ export interface GameState {
   experience: number;
   popularity: number;
   tick: number;
-  width: 8;
-  height: 8;
+  width: number;
+  height: number;
   randomSeed: number;
   guestLimit: number;
   employees: Employee[];

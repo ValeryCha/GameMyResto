@@ -4,6 +4,14 @@ import { moveToward } from '../src/simulation/movement';
 import type { Customer } from '../src/simulation/types';
 
 describe('безопасное перемещение', () => {
+  it('не входит на клетку другого персонажа', () => {
+    const state = createGame();
+    const actor = state.employees[0];
+    state.customers.push({ id: 'blocker', position: { x: 2, y: 3 }, state: 'waitingFood', patience: 300 });
+    expect(moveToward(state, actor, { x: 2, y: 4 })).toBe('blocked');
+    expect(actor.position).toEqual({ x: 2, y: 2 });
+  });
+
   it('не телепортирует при заблокированной цели', () => {
     const state = createGame();
     const actor: Customer = { id: 'g', position: { x: 0, y: 6 }, state: 'waiting', patience: 300 };

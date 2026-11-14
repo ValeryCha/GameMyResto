@@ -78,7 +78,7 @@ function updateCustomer(state: GameState, guest: Customer): void {
       const dish = DISHES.find((item) => item.id === order?.dishId) ?? DISHES[0];
       state.coins += dish.price;
       state.experience += 10;
-      state.popularity = Math.min(50, state.popularity + 0.1);
+      state.popularity = Math.min(100, state.popularity + 0.1);
       guest.state = 'leaving';
       guest.target = exitTarget(state, guest);
       guest.seatId = undefined;
@@ -209,9 +209,10 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     order.pickedUp = true;
   }
   const chair = state.furniture.find((item) => item.id === guest.seatId);
-  const target = chair ? nearestCell(state, waiter, chair) : nearestCell(state, waiter, {
-    id: guest.id, kind: 'plant', position: guest.position, rotation: 0,
-  });
+  const target = chair
+    ? adjacentCells(state, chair).filter((point) => !samePoint(point, guest.position))
+      .sort((a, b) => Math.abs(a.x - waiter.position.x) + Math.abs(a.y - waiter.position.y) - Math.abs(b.x - waiter.position.x) - Math.abs(b.y - waiter.position.y))[0]
+    : nearestCell(state, waiter, { id: guest.id, kind: 'plant', position: guest.position, rotation: 0 });
   if (target && moveToward(state, waiter, target) === 'arrived') {
     order.state = 'delivered';
     waiter.taskId = undefined;
@@ -221,12 +222,12 @@ function updateWaiter(state: GameState, waiter: Employee): void {
 export function advanceSimulation(state: GameState, steps = 1): void {
   for (let i = 0; i < steps; i += 1) {
     state.tick += 1;
-    if ((state.tick === 1 || state.tick % 30 === 1) && state.customers.length < state.guestLimit) spawnCustomer(state);
+    const interval = Math.round(30 - 12 * state.popularity / 100);
+    if ((state.tick === 1 || state.tick % interval === 1) && state.customers.length < state.guestLimit) spawnCustomer(state);
     for (const employee of state.employees) employee.energy = Math.max(0, employee.energy - 0.002);
     for (const guest of [...state.customers]) updateCustomer(state, guest);
     const chef = state.employees.find((employee) => employee.role === 'chef');
-    const waiter = state.employees.find((employee) => employee.role === 'waiter');
     if (chef) updateChef(state, chef);
-    if (waiter) updateWaiter(state, waiter);
+    for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) updateWaiter(state, waiter);
   }
 }

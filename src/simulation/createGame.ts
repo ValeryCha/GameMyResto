@@ -6,12 +6,10 @@ export function createGame(): GameState {
     randomSeed: 123456789, guestLimit: 7,
     employees: [
       { id: 'chef-1', role: 'chef', position: { x: 2, y: 2 }, energy: 100 },
-      { id: 'waiter-1', role: 'waiter', position: { x: 3, y: 3 }, energy: 100 },
     ],
     furniture: [
       { id: 'door-1', kind: 'door', position: { x: 0, y: 7 }, rotation: 0 },
       { id: 'stove-1', kind: 'stove', position: { x: 1, y: 1 }, rotation: 0 },
-      { id: 'counter-1', kind: 'counter', position: { x: 2, y: 1 }, rotation: 0 },
       { id: 'table-1', kind: 'table', position: { x: 5, y: 4 }, rotation: 0 },
       { id: 'chair-1', kind: 'chair', position: { x: 5, y: 5 }, rotation: 0 },
     ],

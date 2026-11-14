@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
 import { advanceSimulation } from '../src/simulation/tick';
+import { hireWaiter } from '../src/simulation/shop';
+import { placeFurniture } from '../src/simulation/commands';
+
+function equipRestaurant(state: ReturnType<typeof createGame>): void {
+  hireWaiter(state);
+  placeFurniture(state, 'counter', { x: 2, y: 1 });
+}
 
 describe('advanceSimulation', () => {
   it('гость без места уходит через 300 секунд и снижает рейтинг', () => {
@@ -17,10 +24,11 @@ describe('advanceSimulation', () => {
     expect(state.customers.some((guest) => guest.id === 'customer-1')).toBe(false);
   });
 
-  it('повар и официант завершают заказ с оплатой', () => {
+  it('повар и официант завершают заказ с оплатой после покупок', () => {
     const state = createGame();
+    equipRestaurant(state);
     advanceSimulation(state, 500);
-    expect(state.coins).toBeGreaterThan(1_000);
+    expect(state.coins).toBeGreaterThan(500);
     expect(state.experience).toBeGreaterThan(0);
     expect(state.orders.some((order) => order.state === 'delivered')).toBe(true);
   });
@@ -45,11 +53,26 @@ describe('advanceSimulation', () => {
     expect(state.customers.some((guest) => guest.id === 'customer-1')).toBe(false);
   });
 
+  it('не исчезает готовый заказ без стойки и официанта', () => {
+    const state = createGame();
+    advanceSimulation(state, 80);
+    expect(state.orders.some((order) => order.state === 'cooking' && order.progress > 0)).toBe(true);
+    expect(state.coins).toBe(1_000);
+  });
+
+  it('рейтинг сокращает интервал появления до 18 секунд', () => {
+    const state = createGame();
+    state.popularity = 100;
+    advanceSimulation(state, 19);
+    expect(state.customers).toHaveLength(2);
+  });
+
   it('spawns a customer and eventually earns coins', () => {
     const state = createGame();
+    equipRestaurant(state);
     advanceSimulation(state, 240);
     expect(state.customers.length).toBeGreaterThan(0);
-    expect(state.coins).toBeGreaterThan(1_000);
+    expect(state.coins).toBeGreaterThan(500);
     expect(state.experience).toBeGreaterThan(0);
   });
 
@@ -58,6 +81,6 @@ describe('advanceSimulation', () => {
     advanceSimulation(state, 1_000);
     for (const employee of state.employees) expect(employee.energy).toBeGreaterThanOrEqual(0);
     expect(state.popularity).toBeGreaterThanOrEqual(0);
-    expect(state.popularity).toBeLessThanOrEqual(50);
+    expect(state.popularity).toBeLessThanOrEqual(100);
   });
 });
