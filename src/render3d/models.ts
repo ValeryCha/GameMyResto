@@ -82,18 +82,52 @@ export function createActorMesh(actor: Employee | Customer): THREE.Group {
   const chef = 'role' in actor && actor.role === 'chef';
   const waiter = 'role' in actor && actor.role === 'waiter';
   const clothes = chef ? 0xf5f2e9 : waiter ? 0x4275a8 : 0xd56b75;
-  cylinder(group, 0.075, 0.35, [-0.1, 0.21, 0], dark);
-  cylinder(group, 0.075, 0.35, [0.1, 0.21, 0], dark);
+  const makeJoint = (name: string, x: number, y: number) => {
+    const joint = new THREE.Group();
+    joint.name = name;
+    joint.position.set(x, y, 0);
+    group.add(joint);
+    return joint;
+  };
+  const leftLeg = makeJoint('leftLeg', -0.1, 0.4);
+  const rightLeg = makeJoint('rightLeg', 0.1, 0.4);
+  cylinder(leftLeg, 0.075, 0.35, [0, -0.175, 0], dark);
+  cylinder(rightLeg, 0.075, 0.35, [0, -0.175, 0], dark);
   cylinder(group, 0.25, 0.5, [0, 0.58, 0], clothes, 0.2);
-  sphere(group, 0.22, [0, 1.02, 0], 0xf2c39c);
-  sphere(group, 0.21, [0, 1.13, -0.04], 0x5b3c2d, [1, 0.48, 1]);
-  cylinder(group, 0.065, 0.4, [-0.26, 0.62, 0], 0xf2c39c).rotation.z = -0.2;
-  cylinder(group, 0.065, 0.4, [0.26, 0.62, 0], 0xf2c39c).rotation.z = 0.2;
+  const leftArm = makeJoint('leftArm', -0.26, 0.82);
+  const rightArm = makeJoint('rightArm', 0.26, 0.82);
+  cylinder(leftArm, 0.065, 0.4, [0, -0.2, 0], 0xf2c39c);
+  cylinder(rightArm, 0.065, 0.4, [0, -0.2, 0], 0xf2c39c);
+  const head = makeJoint('head', 0, 1.02);
+  sphere(head, 0.22, [0, 0, 0], 0xf2c39c);
+  sphere(head, 0.21, [0, 0.11, -0.04], 0x5b3c2d, [1, 0.48, 1]);
   if (chef) {
-    cylinder(group, 0.23, 0.22, [0, 1.25, 0], 0xffffff);
-    sphere(group, 0.24, [0, 1.38, 0], 0xffffff, [1, 0.6, 1]);
+    cylinder(head, 0.23, 0.22, [0, 0.23, 0], 0xffffff);
+    sphere(head, 0.24, [0, 0.36, 0], 0xffffff, [1, 0.6, 1]);
   }
+  const carrying = new THREE.Group();
+  carrying.position.set(0.3, 0.75, -0.16);
+  cylinder(carrying, 0.19, 0.025, [0, 0, 0], cream);
+  carrying.visible = false;
+  group.add(carrying);
+  const cooking = new THREE.Group();
+  cooking.position.set(-0.3, 0.72, -0.14);
+  cylinder(cooking, 0.17, 0.07, [0, 0, 0], dark);
+  box(cooking, [0.28, 0.04, 0.05], [-0.19, 0, 0], darkWood);
+  cooking.visible = false;
+  group.add(cooking);
+  const patienceBack = box(group, [0.54, 0.075, 0.035], [0, 1.58, 0], 0x30383b);
+  const patienceFill = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.045, 0.045), new THREE.MeshBasicMaterial({ color: 0x62bd68 }));
+  patienceFill.position.set(0, 1.58, -0.025);
+  group.add(patienceFill);
+  patienceBack.visible = false;
+  patienceFill.visible = false;
   group.userData.entityId = actor.id;
+  group.userData.joints = { leftArm, rightArm, leftLeg, rightLeg, head };
+  group.userData.carrying = carrying;
+  group.userData.cooking = cooking;
+  group.userData.patienceBack = patienceBack;
+  group.userData.patienceFill = patienceFill;
   return group;
 }
 

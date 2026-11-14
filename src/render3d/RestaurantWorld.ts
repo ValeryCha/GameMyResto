@@ -4,6 +4,7 @@ import { advanceSimulation } from '../simulation/tick';
 import type { GameState } from '../simulation/types';
 import { gridToWorld, worldToGrid } from './coordinates';
 import { createActorMesh, createFurnitureMesh, createRestaurantShell } from './models';
+import { updateActorVisual } from './actors';
 import { classicSkin } from './skins';
 
 export interface WorldCallbacks {
@@ -18,6 +19,7 @@ export class RestaurantWorld {
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera();
   private entities = new Map<string, THREE.Group>();
+  private motions = new Map<string, { from: THREE.Vector3; to: THREE.Vector3; startedAt: number; grid: string }>();
   private raycaster = new THREE.Raycaster();
   private floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   private plantMode = false;
@@ -105,7 +107,7 @@ export class RestaurantWorld {
       this.callbacks.onSecond();
       this.accumulator -= 1000;
     }
-    this.syncEntities();
+    this.syncEntities(time);
     this.renderer.render(this.scene, this.camera);
     this.callbacks.onFrame();
     this.frameId = requestAnimationFrame(this.animate);
@@ -143,7 +145,7 @@ export class RestaurantWorld {
     if (result.ok) this.callbacks.onChange();
   };
 
-  private syncEntities(): void {
+  private syncEntities(time: number): void {
     const current = new Set<string>();
     for (const item of this.state.furniture) {
       current.add(item.id);
@@ -156,18 +158,49 @@ export class RestaurantWorld {
     for (const actor of [...this.state.employees, ...this.state.customers]) {
       current.add(actor.id);
       let model = this.entities.get(actor.id);
+      const position = gridToWorld(actor.position);
+      const target = new THREE.Vector3(position.x, 0.08, position.z);
+      const grid = `${actor.position.x},${actor.position.y}`;
       if (!model) {
         model = createActorMesh(actor);
+        model.position.copy(target);
         this.entities.set(actor.id, model);
+        this.motions.set(actor.id, { from: target.clone(), to: target.clone(), startedAt: time, grid });
         this.scene.add(model);
       }
-      const position = gridToWorld(actor.position);
-      model.position.set(position.x, 0.08, position.z);
+      let motion = this.motions.get(actor.id)!;
+      if (motion.grid !== grid) {
+        motion = { from: model.position.clone(), to: target, startedAt: time, grid };
+        this.motions.set(actor.id, motion);
+      }
+      const rawProgress = THREE.MathUtils.clamp((time - motion.startedAt) / 450, 0, 1);
+      const progress = rawProgress * rawProgress * (3 - 2 * rawProgress);
+      model.position.lerpVectors(motion.from, motion.to, progress);
+      const moving = rawProgress < 1 && motion.from.distanceToSquared(motion.to) > 0.001;
+      if (moving) {
+        const direction = motion.to.clone().sub(motion.from);
+        model.rotation.y = Math.atan2(direction.x, direction.z);
+      }
+      const customer = 'state' in actor ? actor : undefined;
+      const order = 'role' in actor && actor.taskId ? this.state.orders.find((item) => item.id === actor.taskId) : undefined;
+      const patience = customer && !['eating', 'leaving', 'ordering'].includes(customer.state)
+        ? (customer.state === 'waitingFood' ? (customer.foodWait ?? 120) / 120 : customer.patience / 300)
+        : undefined;
+      updateActorVisual(model, {
+        moving,
+        time: time / 1000,
+        delta: 1 / 60,
+        patience,
+        carrying: order?.state === 'waitingDelivery' && order.pickedUp,
+        cooking: order?.state === 'cooking',
+      });
+      model.position.y += model.userData.bodyBob ?? 0;
     }
     for (const [id, model] of this.entities) {
       if (!current.has(id)) {
         this.scene.remove(model);
         this.entities.delete(id);
+        this.motions.delete(id);
       }
     }
   }
