@@ -2,7 +2,11 @@ import type { GameState, Point } from './types';
 
 export const samePoint = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 export const furnitureCells = (item: GameState['furniture'][number]): Point[] =>
-  item.kind === 'tableDouble' ? [item.position, { x: item.position.x + 1, y: item.position.y }] : [item.position];
+  item.kind === 'tableDouble'
+    ? [item.position, item.rotation === 90 || item.rotation === 270
+      ? { x: item.position.x, y: item.position.y + 1 }
+      : { x: item.position.x + 1, y: item.position.y }]
+    : [item.position];
 const key = (p: Point) => `${p.x},${p.y}`;
 const heuristic = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 

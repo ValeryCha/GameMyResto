@@ -3,6 +3,7 @@ import { chooseGuestAction } from './ai';
 import { isWalkable, samePoint } from './grid';
 import { moveToward } from './movement';
 import { nextRandom } from './random';
+import { findSeat, isSeatCurrent } from './seating';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
 
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -28,19 +29,11 @@ function exitTarget(state: GameState, guest: Customer): Point {
   return (door && nearestCell(state, guest, door)) || entrance(state);
 }
 
-function freeSeat(state: GameState, guest: Customer): Furniture | undefined {
-  return state.furniture.find((chair) => chair.kind === 'chair' &&
-    state.furniture.some((table) => table.kind === 'table') &&
-    !state.customers.some((other) => other.id !== guest.id && other.seatId === chair.id));
-}
-
 function reserveSeat(state: GameState, guest: Customer): boolean {
-  const chair = state.furniture.find((item) => item.id === guest.seatId) ?? freeSeat(state, guest);
-  if (!chair) return false;
-  const target = nearestCell(state, guest, chair);
-  if (!target) return false;
-  guest.seatId = chair.id;
-  guest.target = target;
+  const assignment = findSeat(state, guest);
+  if (!assignment) return false;
+  guest.seatId = assignment.chair.id;
+  guest.target = { ...assignment.chair.position };
   guest.state = 'seekingSeat';
   return true;
 }
@@ -98,6 +91,11 @@ function updateCustomer(state: GameState, guest: Customer): void {
     return;
   }
 
+  if (guest.state === 'seated') {
+    guest.state = 'ordering';
+    return;
+  }
+
   if (guest.state === 'ordering') {
     const action = chooseGuestAction(state, guest);
     if (action === 'order') {
@@ -112,21 +110,26 @@ function updateCustomer(state: GameState, guest: Customer): void {
   }
 
   guest.patience = Math.max(0, guest.patience - 1);
-  if (guest.state === 'seekingSeat' && !guest.seatId && guest.patience === 299 && !freeSeat(state, guest)) return;
+  if (guest.seatId && !isSeatCurrent(state, guest)) {
+    guest.seatId = undefined;
+    guest.target = undefined;
+    guest.state = 'seekingSeat';
+  }
+  if (guest.state === 'seekingSeat' && !guest.seatId && guest.patience === 299 && !findSeat(state, guest)) return;
   const action = chooseGuestAction(state, guest);
   if (action === 'leave') {
     unhappyExit(state, guest);
     return;
   }
 
-  if (action === 'seat' && guest.state !== 'wandering' && guest.state !== 'inspecting') {
+  if (action === 'seat' && guest.state !== 'wandering' && guest.state !== 'inspecting' && !guest.seatId) {
     if (!reserveSeat(state, guest)) return;
   }
 
   if (guest.state === 'seekingSeat' && guest.target) {
-    const movement = moveToward(state, guest, guest.target);
+    const movement = moveToward(state, guest, guest.target, true);
     if (movement === 'arrived') {
-      guest.state = 'ordering';
+      guest.state = 'seated';
       guest.target = undefined;
     } else if (movement === 'blocked') {
       guest.seatId = undefined;
