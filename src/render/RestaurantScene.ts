@@ -8,10 +8,15 @@ export class RestaurantScene extends Phaser.Scene {
   constructor(private state: GameState) { super('restaurant'); }
   private graphics!: Phaser.GameObjects.Graphics;
   private accumulator = 0;
+  private plantMode = false;
+
+  setPlantMode(enabled: boolean) { this.plantMode = enabled; }
 
   create() {
     this.graphics = this.add.graphics();
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.plantMode) return;
+      this.plantMode = false;
       placeFurniture(this.state, 'plant', screenToGrid(pointer.position));
     });
   }
