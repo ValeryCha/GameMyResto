@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
-import { advanceSimulation } from '../src/simulation/tick';
+import { advanceSimulation, customerSpawnInterval } from '../src/simulation/tick';
 import { hireWaiter } from '../src/simulation/shop';
 import { placeFurniture } from '../src/simulation/commands';
 
@@ -60,10 +60,14 @@ describe('advanceSimulation', () => {
     expect(state.coins).toBe(1_000);
   });
 
-  it('рейтинг сокращает интервал появления до 18 секунд', () => {
+  it('рейтинг напрямую сокращает интервал появления', () => {
     const state = createGame();
+    for (const [popularity, interval] of [[0, 32], [10, 30], [50, 20], [100, 8]]) {
+      state.popularity = popularity;
+      expect(customerSpawnInterval(state)).toBe(interval);
+    }
     state.popularity = 100;
-    advanceSimulation(state, 19);
+    advanceSimulation(state, 9);
     expect(state.customers).toHaveLength(2);
   });
 

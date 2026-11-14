@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
-import { moveToward } from '../src/simulation/movement';
+import { moveActor, moveToward } from '../src/simulation/movement';
 import type { Customer } from '../src/simulation/types';
 
 describe('безопасное перемещение', () => {
@@ -37,6 +37,13 @@ describe('безопасное перемещение', () => {
     );
     expect(moveToward(state, actor, { x: 5, y: 5 })).toBe('blocked');
     expect(actor.position).toEqual({ x: 5, y: 6 });
+  });
+
+  it('делает два безопасных шага за один игровой тик', () => {
+    const state = createGame();
+    const actor = state.employees[0];
+    expect(moveActor(state, actor, { x: 2, y: 4 })).toBe('arrived');
+    expect(actor.position).toEqual({ x: 2, y: 4 });
   });
 
   it('сообщает о прибытии без изменения позиции', () => {
