@@ -3,7 +3,8 @@ import { createGame } from '../src/simulation/createGame';
 import { placeFurniture } from '../src/simulation/commands';
 import { hireWaiter } from '../src/simulation/shop';
 import { advanceSimulation } from '../src/simulation/tick';
-import { targetGuestCount } from '../src/simulation/guestFlow';
+import { capacity } from '../src/simulation/guestFlow';
+import { QUEUE_LIMIT } from '../src/simulation/queue';
 
 describe('устойчивость команды официантов', () => {
   for (const waiters of [2, 3, 5]) {
@@ -26,8 +27,8 @@ describe('устойчивость команды официантов', () => {
 
       expect(state.servedTotal, JSON.stringify({ employees: state.employees, customers: state.customers, orders: state.orders.filter((order) => order.state !== 'delivered') })).toBeGreaterThan(servedBefore);
       expect(state.employees.filter((employee) => employee.role === 'waiter')).toHaveLength(waiters);
-      // +1 допускает гостя в leaving, который ещё не удалён из customers после завершения тика.
-      expect(state.customers.length).toBeLessThanOrEqual(targetGuestCount(state) + 1);
+      // Активные места + очередь + один leaving, ещё не удалённый после завершения тика.
+      expect(state.customers.length).toBeLessThanOrEqual(capacity(state) + QUEUE_LIMIT + 1);
       expect(state.orders.length).toBeLessThanOrEqual(state.customers.length);
       for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) {
         const order = state.orders.find((item) => item.id === waiter.taskId);

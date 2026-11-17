@@ -91,7 +91,7 @@ export interface GameState {
   calendar: CalendarState;
   popularity: number;
   tick: number;
-  spawnProgress: number;
+  arrivalProgress: number;
   width: number;
   height: number;
   randomSeed: number;

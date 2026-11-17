@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
-import { advanceSimulation, customerSpawnInterval } from '../src/simulation/tick';
+import { advanceSimulation } from '../src/simulation/tick';
+import { arrivalRate } from '../src/simulation/guestFlow';
 import { hireWaiter } from '../src/simulation/shop';
 import { placeFurniture } from '../src/simulation/commands';
 
@@ -9,12 +10,18 @@ function equipRestaurant(state: ReturnType<typeof createGame>): void {
   placeFurniture(state, 'counter', { x: 2, y: 1 });
 }
 
+function addServiceWithoutRating(state: ReturnType<typeof createGame>): void {
+  state.employees.push({ id: 'waiter', role: 'waiter', position: { x: 0, y: 0 }, energy: 100 });
+  state.furniture.push({ id: 'counter', kind: 'counter', position: { x: 2, y: 1 }, rotation: 0 });
+}
+
 describe('advanceSimulation', () => {
   it('гость без места уходит из очереди после истечения терпения и снижает рейтинг', () => {
     const state = createGame();
     state.furniture = state.furniture.filter((item) => !['chair', 'table'].includes(item.kind));
-    state.spawnProgress = -10_000;
+    addServiceWithoutRating(state);
     advanceSimulation(state, 1);
+    state.arrivalProgress = -10_000;
     expect(state.customers[0].state).toBe('queueWaiting');
     const remaining = Math.ceil(state.customers[0].queuePatience!);
     advanceSimulation(state, remaining - 2); // Первый тик ожидания уже прошёл в тик прихода.
@@ -37,19 +44,23 @@ describe('advanceSimulation', () => {
 
   it('два гостя не занимают один и тот же стул', () => {
     const state = createGame();
+    addServiceWithoutRating(state);
     advanceSimulation(state, 1);
     expect(state.customers[0].seatId).toBe('chair-1');
     state.customers[0].state = 'waitingFood';
     advanceSimulation(state, 30);
     const reservations = state.customers.map((customer) => customer.seatId).filter(Boolean);
     expect(new Set(reservations).size).toBe(reservations.length);
-    expect(state.customers.find((guest) => guest.id === 'customer-31')?.seatId).toBeUndefined();
+    expect(state.customers[1]?.seatId).toBeUndefined();
   });
 
   it('гость без еды уходит через 120 секунд без оплаты', () => {
     const state = createGame();
     state.employees = state.employees.filter((employee) => employee.role !== 'chef');
-    state.spawnProgress = -10_000; // Изолируем проверку foodWait от новых гостей и штрафов очереди.
+    addServiceWithoutRating(state);
+    state.completedQuestIds = ['quest-hire-waiter', 'quest-buy-counter']; // Награды за стартовые покупки не относятся к проверке.
+    advanceSimulation(state, 1);
+    state.arrivalProgress = -10_000; // Изолируем проверку foodWait от новых гостей и штрафов очереди.
     advanceSimulation(state, 180);
     expect(state.coins).toBe(1_000);
     expect(state.popularity).toBe(9);
@@ -63,17 +74,21 @@ describe('advanceSimulation', () => {
     expect(state.coins).toBe(1_000);
   });
 
-  it('рейтинг напрямую сокращает интервал появления', () => {
+  it('сохраняет явного первого гостя на тике 1 и вычитает единицу прогресса', () => {
     const state = createGame();
-    hireWaiter(state);
-    state.tick = 60;
-    for (const [popularity, interval] of [[0, 7.14], [10, 6.71], [50, 5], [100, 2.86]]) {
-      state.popularity = popularity;
-      expect(customerSpawnInterval(state)).toBeCloseTo(interval, 2);
-    }
-    state.popularity = 100;
-    advanceSimulation(state, 9);
-    expect(state.customers).toHaveLength(2);
+    advanceSimulation(state, 1);
+    expect(state.customers.map((guest) => guest.id)).toEqual(['customer-1']);
+    expect(state.arrivalProgress).toBeCloseTo(-1); // throughput = 0, поэтому прирост равен нулю.
+  });
+
+  it('делает не более одной попытки прихода за тик и сохраняет дробный остаток', () => {
+    const state = createGame();
+    addServiceWithoutRating(state);
+    state.arrivalProgress = 1.25;
+    const expectedRemainder = 0.25 + arrivalRate(state);
+    advanceSimulation(state, 1);
+    expect(state.customers).toHaveLength(1);
+    expect(state.arrivalProgress).toBeCloseTo(expectedRemainder);
   });
 
   it('spawns a customer and eventually earns coins', () => {

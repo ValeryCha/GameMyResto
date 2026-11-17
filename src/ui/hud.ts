@@ -119,8 +119,8 @@ export function createHud(callbacks: HudCallbacks) {
       const model = getHudModel(state);
       values.coins.textContent = String(model.coins);
       values.popularity.textContent = model.popularity;
-      values.guests.textContent = `${model.guests} занято · свободно ${Math.max(0, model.guestLimit - model.guests)} · лимит ${model.guestLimit}`;
-      values.guests.parentElement!.title = `Планируемый поток гостей: ${model.targetGuests}`;
+      values.guests.textContent = `${model.guests} · мест ${model.capacity}`;
+      values.guests.parentElement!.title = `Планируемый поток: ${model.arrivalsPer60.toFixed(1)} гостей за 60 с`;
       values.peak.textContent = model.peak ? `${model.peakRemaining} с` : `через ${model.peakRemaining} с`;
       values.peak.parentElement?.classList.toggle('is-peak', model.peak);
       const firstQueued = state.customers.find((guest) => guest.id === state.guestQueue[0]);

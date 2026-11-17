@@ -16,7 +16,7 @@ test('HUD показывает FIFO-очередь и терпение перв�
     save.state.queueSeatedTotal = 0;
     save.state.queueWaitTicksTotal = 0;
     save.state.tick = 0;
-    save.state.spawnProgress = 0;
+    save.state.arrivalProgress = 1;
     save.state.peakState = { activePeakId: null, rewardedPeakIds: [], current: null, last: null };
     localStorage.setItem(key, JSON.stringify(save));
   });

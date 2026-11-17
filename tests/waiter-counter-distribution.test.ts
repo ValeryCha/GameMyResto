@@ -7,7 +7,7 @@ function createBusyWaiterScene(counterCount = 4, waiterCount = 5): GameState {
   const state = createGame();
   state.width = 20;
   state.height = 20;
-  state.spawnProgress = -10_000;
+  state.arrivalProgress = -10_000;
   state.employees = [];
   state.furniture = state.furniture.filter((item) => item.kind === 'door');
   for (let index = 0; index < counterCount; index += 1) {

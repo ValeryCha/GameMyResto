@@ -42,13 +42,14 @@ test('календарь содержит 30 дней, выдаёт наград
   expect(errors).toEqual([]);
 });
 
-test('семь пригодных мест заполняются семью гостями без превышения цели', async ({ page }) => {
+test('семь пригодных мест работают с новым потоком и ограниченной очередью', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Играть' }).click();
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
   const result = await page.evaluate(async () => {
     const { advanceSimulation } = await import('../src/simulation/tick');
-    const { countUsableSeats, targetGuestCount } = await import('../src/simulation/guestFlow');
+    const { countUsableSeats } = await import('../src/simulation/guestFlow');
+    const { QUEUE_LIMIT } = await import('../src/simulation/queue');
     const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
     const state = save.state;
     const tables = [[2, 0], [4, 0], [6, 0], [2, 3], [4, 3], [6, 3], [4, 6]];
@@ -59,14 +60,18 @@ test('семь пригодных мест заполняются семью г�
       ...tables.map(([x, y], index) => ({ id: `table-${index}`, kind: 'table', position: { x, y }, rotation: 0 })),
       ...tables.map(([x, y], index) => ({ id: `chair-${index}`, kind: 'chair', position: { x, y: y + 1 }, rotation: 0 })),
     ];
-    state.employees = [{ id: 'waiter', role: 'waiter', position: { x: 0, y: 6 }, energy: 100 }];
+    state.employees = [
+      { id: 'chef', role: 'chef', position: { x: 1, y: 6 }, energy: 100 },
+      { id: 'waiter', role: 'waiter', position: { x: 0, y: 6 }, energy: 100 },
+    ];
     state.customers = [];
     state.orders = [];
-    state.guestLimit = 7;
     advanceSimulation(state, 90);
-    return { usable: countUsableSeats(state), target: targetGuestCount(state), active: state.customers.length };
+    return { usable: countUsableSeats(state), active: state.customers.length, maximum: 7 + QUEUE_LIMIT + 1 };
   });
-  expect(result).toEqual({ usable: 7, target: 7, active: 7 });
+  expect(result.usable).toBe(7);
+  expect(result.active).toBeGreaterThan(0);
+  expect(result.active).toBeLessThanOrEqual(result.maximum);
 });
 
 test('желание без рецепта не снижает рейтинг, а купленное оплачивается пятикратно', async ({ page }) => {

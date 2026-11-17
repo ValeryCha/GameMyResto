@@ -8,7 +8,7 @@ test('5 официантов и 4 стойки: 300 тиков без завис
     const state = createGame();
     state.width = 20;
     state.height = 20;
-    state.spawnProgress = -10_000;
+    state.arrivalProgress = -10_000;
     state.employees = [];
     state.furniture = state.furniture.filter((item) => item.kind === 'door');
     for (let index = 0; index < 4; index += 1) state.furniture.push({ id: `counter-${index}`, kind: 'counter', position: { x: 1, y: 1 + index * 3 }, rotation: 0 });

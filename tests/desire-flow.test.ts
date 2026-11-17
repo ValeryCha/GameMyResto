@@ -30,7 +30,7 @@ it('гость с недоступным желанием реально пер�
   const state = createGame();
   state.tick = 2;
   state.level = 2;
-  state.spawnProgress = -10_000;
+  state.arrivalProgress = -10_000;
   state.customers.push(wishingGuest());
   const positions = new Set<string>();
 
@@ -76,7 +76,7 @@ it('купленное желаемое блюдо проходит пригот
   state.employees.push({ id: 'waiter', role: 'waiter', position: { x: 2, y: 2 }, energy: 100 });
   state.customers.push(wishingGuest());
   state.tick = 1;
-  state.spawnProgress = -10_000;
+  state.arrivalProgress = -10_000;
 
   advanceSimulation(state, 100);
 

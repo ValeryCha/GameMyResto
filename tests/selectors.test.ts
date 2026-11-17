@@ -11,8 +11,8 @@ describe('модель HUD', () => {
       level: 1,
       popularity: '10.0',
       guests: 0,
-      targetGuests: 4,
-      guestLimit: 7,
+      capacity: 1,
+      arrivalsPer60: 0,
       peak: true,
       peakRemaining: 60,
     });

@@ -1,5 +1,5 @@
 import type { GameState } from './types';
-import { isPeakHour, targetGuestCount } from './guestFlow';
+import { arrivalRate, capacity, isPeakHour } from './guestFlow';
 
 export function getHudModel(state: GameState) {
   const phase = ((state.tick % 180) + 180) % 180;
@@ -9,8 +9,8 @@ export function getHudModel(state: GameState) {
     level: state.level,
     popularity: state.popularity.toFixed(1),
     guests: state.customers.length,
-    targetGuests: targetGuestCount(state),
-    guestLimit: state.guestLimit,
+    capacity: capacity(state),
+    arrivalsPer60: arrivalRate(state) * 60,
     peak: isPeakHour(state.tick),
     peakRemaining: phase < 60 ? 60 - phase : 180 - phase,
   };

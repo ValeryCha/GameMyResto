@@ -126,7 +126,7 @@ export function normalizeState(state: GameState): GameState {
   state.appliedWindows = acceptedWindows;
   state.ownedLoyaltyItems = Array.isArray(state.ownedLoyaltyItems) ? [...new Set(state.ownedLoyaltyItems.filter((id) => Boolean(loyaltyItemById(id))))] : [];
   if (state.furniture.some((item) => item.kind === 'plant') && !state.ownedLoyaltyItems.includes('plant')) state.ownedLoyaltyItems.push('plant');
-  state.toleranceBonus = loyaltyBonus(state); state.decorationRatingBonus = calculateDecorationRating(state); recalculateGuestLimit(state); state.spawnProgress ??= 0; state.completedQuestIds ??= [];
+  state.toleranceBonus = loyaltyBonus(state); state.decorationRatingBonus = calculateDecorationRating(state); recalculateGuestLimit(state); state.arrivalProgress = Number.isFinite(state.arrivalProgress) ? Math.max(0, state.arrivalProgress) : 0; state.completedQuestIds ??= [];
   if (state.level > 1) for (const id of STARTER_QUEST_IDS) if (!state.completedQuestIds.includes(id)) state.completedQuestIds.push(id);
   state.unlockedDishIds ??= ['soup']; state.servedTotal ??= 0; state.revenueTotal ??= 0; state.satisfiedStreak ??= 0; state.desiredServedTotal ??= 0; state.unhappyTotal ??= 0; state.paidExpansions ??= 0; state.upgrades ??= { cooking: 0, waiter: 0 };
   state.upgrades.cooking = Math.max(0, Math.min(5, Math.floor(state.upgrades.cooking ?? 0))); state.upgrades.waiter = Math.max(0, Math.min(5, Math.floor(state.upgrades.waiter ?? 0)));

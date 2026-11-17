@@ -8,7 +8,7 @@ import { findSeat, isSeatCurrent } from './seating';
 import { processProgression } from './progression';
 import { createGuestOrder, settleOrder } from './orders';
 import { createAppearance } from '../render3d/appearance';
-import { customerSpawnInterval, patienceMultiplier, targetGuestCount } from './guestFlow';
+import { arrivalRate, patienceMultiplier } from './guestFlow';
 import { cookingProgress, waiterMovementSteps } from './staff';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
@@ -353,22 +353,17 @@ function updateWaiter(state: GameState, waiter: Employee): void {
   }
 }
 
-export { customerSpawnInterval } from './guestFlow';
-
 export function advanceSimulation(state: GameState, steps = 1): void {
   for (let i = 0; i < steps; i += 1) {
     state.tick += 1;
     beginPeak(state);
-    state.spawnProgress += 1;
-    const interval = customerSpawnInterval(state);
+    state.arrivalProgress += arrivalRate(state);
     if (state.tick === 1) {
       spawnCustomer(state);
-    } else if (state.spawnProgress >= interval) {
-      if (state.customers.length < targetGuestCount(state)) {
-        if (spawnCustomer(state)) state.spawnProgress -= interval;
-      } else {
-        state.spawnProgress = interval;
-      }
+      state.arrivalProgress -= 1;
+    } else if (state.arrivalProgress >= 1) {
+      spawnCustomer(state);
+      state.arrivalProgress -= 1;
     }
     for (const employee of state.employees) employee.energy = Math.max(0, employee.energy - 0.002);
     for (const guest of [...state.customers]) updateCustomer(state, guest);

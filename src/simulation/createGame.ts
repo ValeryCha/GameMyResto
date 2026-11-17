@@ -9,7 +9,7 @@ export function createGame(): GameState {
     guestQueue: [], queueRejectedTotal: 0, queueTimeoutTotal: 0, queueSeatedTotal: 0, queueWaitTicksTotal: 0,
     paidExpansions: 0, purchasedGuestSlots: 0, upgrades: { cooking: 0, waiter: 0 }, lastDailyReward: '',
     calendar: { lastClaimDate: '', nextDayIndex: 0, cycle: 1 },
-    popularity: 10, tick: 0, spawnProgress: 0, width: 8, height: 8,
+    popularity: 10, tick: 0, arrivalProgress: 0, width: 8, height: 8,
     randomSeed: 123456789, guestLimit: 7, maxGuestLimit: 7, furnitureInventory: {},
     ownedWallpapers: {}, appliedWallpapers: [],
     activeFloorPattern: null, ownedFloorPatterns: [], activeWallpaperId: null,

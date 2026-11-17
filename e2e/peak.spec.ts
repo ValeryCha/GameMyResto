@@ -13,7 +13,7 @@ test('HUD отдельно показывает статистику пика и
     const key = 'moy-restoran:primary';
     const save = JSON.parse(localStorage.getItem(key)!);
     save.state.tick = 169;
-    save.state.spawnProgress = -10_000;
+    save.state.arrivalProgress = -10_000;
     save.state.peakState = { activePeakId: null, rewardedPeakIds: [], current: null, last: null };
     localStorage.setItem(key, JSON.stringify(save));
   });
