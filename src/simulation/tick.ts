@@ -10,6 +10,7 @@ import { createGuestOrder, settleOrder } from './orders';
 import { createAppearance } from '../render3d/appearance';
 import { customerSpawnInterval, patienceMultiplier, targetGuestCount } from './guestFlow';
 import { cookingProgress, waiterMovementSteps } from './staff';
+import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
 
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -53,6 +54,7 @@ function reserveSeat(state: GameState, guest: Customer): boolean {
   guest.seatId = assignment.chair.id;
   guest.target = { ...assignment.chair.position };
   guest.state = 'seekingSeat';
+  recordPeakSeated(state);
   return true;
 }
 
@@ -79,6 +81,7 @@ function unhappyExit(state: GameState, guest: Customer): void {
   guest.state = 'leaving';
   guest.target = exitTarget(state, guest);
   guest.seatId = undefined;
+  recordPeakUnhappy(state);
   if (guest.waitingForRecipe) return;
   state.popularity = Math.max(0, state.popularity - 1);
   state.unhappyTotal += 1;
@@ -95,6 +98,7 @@ export function patienceBonus(state: GameState): number {
 function spawnCustomer(state: GameState): boolean {
   const position = entrance(state);
   if ([...state.employees, ...state.customers].some((actor) => samePoint(actor.position, position))) return false;
+  recordPeakArrival(state);
   const bonus = (1 + patienceBonus(state)) * patienceMultiplier(state);
   state.customers.push({
     id: `customer-${state.tick}`,
@@ -320,6 +324,7 @@ export { customerSpawnInterval } from './guestFlow';
 export function advanceSimulation(state: GameState, steps = 1): void {
   for (let i = 0; i < steps; i += 1) {
     state.tick += 1;
+    beginPeak(state);
     state.spawnProgress += 1;
     const interval = customerSpawnInterval(state);
     if (state.tick === 1) {
@@ -336,6 +341,7 @@ export function advanceSimulation(state: GameState, steps = 1): void {
     const chef = state.employees.find((employee) => employee.role === 'chef');
     if (chef) updateChef(state, chef);
     for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) updateWaiter(state, waiter);
+    finishPeak(state);
     processProgression(state);
   }
 }

@@ -58,6 +58,8 @@ describe('желания и оплата', () => {
   it('платит ×5 и до 20 процентов чаевых, обновляя статистику', () => {
     const state = createGame();
     state.popularity = 100;
+    // tick 100 — вне пика, проверяется базовая оплата без peak-множителя.
+    state.tick = 100;
     expect(paymentFor(state, DISHES[0], true)).toBe(30);
     expect(paymentFor(state, DISHES[0], false)).toBe(6);
     const customer = guest('paid');

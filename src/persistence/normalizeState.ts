@@ -15,6 +15,7 @@ import { paintingById } from '../content/paintings';
 import { windowWallCells } from '../simulation/wallWindows';
 import { loyaltyBonus, paintingWallCells } from '../simulation/catalogDecorations';
 import { inheritExpandedWallpapers } from '../simulation/expansion';
+import { normalizePeakState } from '../simulation/peak';
 
 export function normalizeState(state: GameState): GameState {
   state.randomSeed ??= 123456789; state.guestLimit ??= 7; state.level ??= 1; state.purchasedGuestSlots ??= 0;
@@ -137,5 +138,6 @@ export function normalizeState(state: GameState): GameState {
   }
   for (const order of state.orders) { order.dishId ??= 'soup'; order.desired ??= false; }
   state.orders = state.orders.filter((order) => order.state !== 'delivered' || state.customers.some((customer) => customer.id === order.customerId));
+  normalizePeakState(state);
   processProgression(state); return state;
 }

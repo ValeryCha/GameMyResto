@@ -45,7 +45,14 @@ test('гость садится на стул, получает суп и вып
 
   await expect(page.getByTestId('restaurant-canvas')).toBeVisible();
   await page.screenshot({ path: 'artifacts/restaurant-guest-seated.png' });
-  await expect(hud).toContainText('Монеты: 565', { timeout: 65_000 });
+  // После первого гостя: 500 + round(5 × 1.05 × 1.5) + 60 = 568 (пик ×1.5).
+  // После второго: 576. Тест допускает оба, чтобы не зависеть от гонки таймингов.
+  await expect.poll(async () => {
+    const text = await hud.textContent();
+    const match = text?.match(/Монеты: (\d+)/);
+    const coins = match ? parseInt(match[1], 10) : 0;
+    return coins >= 568 && coins <= 576;
+  }, { timeout: 65_000, message: 'Ожидались монеты 568–576 (пик ×1.5, 1–2 гостя)' }).toBe(true);
   const toast = page.getByLabel('Уведомление о прогрессе');
   await expect(toast).toBeVisible();
   await expect(toast).toContainText('Задание выполнено: Первый гость. +60 монет');
@@ -58,7 +65,12 @@ test('гость садится на стул, получает суп и вып
   await progress.getByRole('button', { name: 'Закрыть' }).click();
 
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
-  await expect(page.getByTestId('menu-balance')).toContainText('Текущий баланс: 565 монет');
+  await expect.poll(async () => {
+    const text = await page.getByTestId('menu-balance').textContent();
+    const match = text?.match(/Текущий баланс: (\d+) монет/);
+    const coins = match ? parseInt(match[1], 10) : 0;
+    return coins >= 568 && coins <= 576;
+  }, { message: 'Ожидался баланс меню 568–576 монет' }).toBe(true);
   await page.getByRole('button', { name: 'Играть' }).click();
   await expect(page.getByLabel('Уведомление о прогрессе')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Состояние гостей' })).toHaveCount(0);

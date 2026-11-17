@@ -2,6 +2,7 @@ import { DISHES, type Dish } from '../content/dishes';
 import { availableDishes } from './progression';
 import { nextRandom } from './random';
 import { tipMultiplier } from './guestFlow';
+import { peakTipMultiplier, recordPeakService } from './peak';
 import type { Customer, GameState, Order } from './types';
 
 export interface DishSelection {
@@ -63,13 +64,14 @@ export function createGuestOrder(state: GameState, guest: Customer): Order | und
 }
 
 export const paymentFor = (state: GameState, dish: Dish, desired: boolean): number =>
-  Math.round(dish.price * (desired ? 5 : 1) * tipMultiplier(state));
+  Math.round(dish.price * (desired ? 5 : 1) * tipMultiplier(state) * peakTipMultiplier(state));
 
 export function settleOrder(state: GameState, guest: Customer, order: Order): number {
   const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
   const revenue = paymentFor(state, dish, Boolean(order.desired));
   state.coins += revenue;
   state.revenueTotal += revenue;
+  recordPeakService(state, revenue);
   state.experience += 10;
   state.servedTotal += 1;
   state.satisfiedStreak += 1;

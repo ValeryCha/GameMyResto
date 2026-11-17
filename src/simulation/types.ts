@@ -41,8 +41,33 @@ export interface AppliedWindow {
   side: 'north' | 'south' | 'west' | 'east';
   index: number;
 }
+export interface PeakStats {
+  startedAtTick: number;
+  arrived: number;
+  seated: number;
+  served: number;
+  unhappy: number;
+  queueRejected: number;
+  queueTimeout: number;
+  revenue: number;
+  bonusCoins: number;
+  carriedIn: number;
+}
+export interface PeakResult extends PeakStats {
+  peakId: number;
+  serviceRatio: number;
+  completion: number;
+  bonusXP: number;
+  perfect: boolean;
+}
 export interface GameState {
   version: 1;
+  peakState: {
+    activePeakId: number | null;
+    rewardedPeakIds: number[];
+    current: PeakStats | null;
+    last: PeakResult | null;
+  };
   coins: number;
   experience: number;
   level: number;

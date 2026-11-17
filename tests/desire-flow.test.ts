@@ -81,6 +81,7 @@ it('купленное желаемое блюдо проходит пригот
   advanceSimulation(state, 100);
 
   expect(state.desiredServedTotal).toBe(1);
-  expect(state.revenueTotal).toBe(35);
+  // Оплата на tick 20 — внутри пика, tipMultiplier ×1.5.
+  expect(state.revenueTotal).toBe(53);
   expect(state.satisfiedStreak).toBe(1);
 });

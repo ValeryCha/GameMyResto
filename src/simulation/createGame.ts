@@ -2,7 +2,9 @@ import type { GameState } from './types';
 
 export function createGame(): GameState {
   return {
-    version: 1, coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
+    version: 1,
+    peakState: { activePeakId: null, rewardedPeakIds: [], current: null, last: null },
+    coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
     servedTotal: 0, revenueTotal: 0, satisfiedStreak: 0, desiredServedTotal: 0, unhappyTotal: 0,
     paidExpansions: 0, purchasedGuestSlots: 0, upgrades: { cooking: 0, waiter: 0 }, lastDailyReward: '',
     calendar: { lastClaimDate: '', nextDayIndex: 0, cycle: 1 },

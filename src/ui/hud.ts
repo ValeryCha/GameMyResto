@@ -3,6 +3,8 @@ import { getHudModel } from '../simulation/selectors';
 import { experienceThreshold } from '../simulation/progression';
 import { calendarView } from '../simulation/calendar';
 import { createIcon, setButtonIcon, type IconName } from './icons';
+import { peakBottleneck } from '../simulation/peak';
+import type { PeakResult } from '../simulation/types';
 
 interface HudCallbacks {
   onShop(): void;
@@ -88,10 +90,23 @@ export function createHud(callbacks: HudCallbacks) {
   toast.className = 'hud-toast';
   toast.hidden = true;
   toast.setAttribute('role', 'status');
-  document.body.append(root, toast);
+  const peakBanner = document.createElement('div');
+  peakBanner.className = 'hud-peak-banner';
+  peakBanner.dataset.testid = 'peak-banner';
+  peakBanner.hidden = true;
+  peakBanner.setAttribute('role', 'status');
+  const peakResult = document.createElement('div');
+  peakResult.className = 'hud-peak-result';
+  peakResult.dataset.testid = 'peak-result';
+  peakResult.hidden = true;
+  peakResult.setAttribute('role', 'status');
+  peakResult.setAttribute('aria-label', 'Итог пикового часа');
+  document.body.append(root, toast, peakBanner, peakResult);
   let previousRating: number | undefined;
   let ratingTimer: ReturnType<typeof setTimeout> | undefined;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  let peakResultTimer: ReturnType<typeof setTimeout> | undefined;
+  let observedPeakResult: PeakResult | null | undefined;
   return {
     update(state: GameState, today: string) {
       const model = getHudModel(state);
@@ -101,6 +116,27 @@ export function createHud(callbacks: HudCallbacks) {
       values.guests.parentElement!.title = `Планируемый поток гостей: ${model.targetGuests}`;
       values.peak.textContent = model.peak ? `${model.peakRemaining} с` : `через ${model.peakRemaining} с`;
       values.peak.parentElement?.classList.toggle('is-peak', model.peak);
+      const phase = ((state.tick % 180) + 180) % 180;
+      if (state.peakState.current) {
+        peakBanner.hidden = false;
+        peakBanner.textContent = `Пик: ${60 - phase} с · обслужено ${state.peakState.current.served} · недовольных ${state.peakState.current.unhappy}`;
+      } else if (phase >= 170) {
+        peakBanner.hidden = false;
+        peakBanner.textContent = `Пик через ${180 - phase} · лимитирует: ${peakBottleneck(state)}`;
+      } else {
+        peakBanner.hidden = true;
+      }
+      if (observedPeakResult === undefined) {
+        observedPeakResult = state.peakState.last;
+      } else if (state.peakState.last && state.peakState.last !== observedPeakResult) {
+        observedPeakResult = state.peakState.last;
+        const result = state.peakState.last;
+        const grade = result.bonusXP === 50 ? 'отлично' : result.bonusXP === 20 ? 'хорошо' : 'пройден';
+        peakResult.textContent = `Пик: ${grade} · обслужено ${result.served} · недовольных ${result.unhappy} · сервис ${Math.round(result.serviceRatio * 100)}% · завершено ${Math.round(result.completion * 100)}%${result.bonusCoins ? ` · +${result.bonusCoins} монет, +${result.bonusXP} опыта` : ''}`;
+        peakResult.hidden = false;
+        if (peakResultTimer) clearTimeout(peakResultTimer);
+        peakResultTimer = setTimeout(() => { peakResult.hidden = true; }, 6000);
+      }
       const atMaxLevel = state.level >= 33;
       const threshold = atMaxLevel ? state.experience : experienceThreshold(state.level);
       experienceLevel.textContent = String(state.level);
@@ -135,7 +171,13 @@ export function createHud(callbacks: HudCallbacks) {
     },
     setVisible(visible: boolean) {
       root.hidden = !visible;
-      if (!visible) toast.hidden = true;
+      if (!visible) {
+        toast.hidden = true;
+        peakBanner.hidden = true;
+        peakResult.hidden = true;
+        if (peakResultTimer) clearTimeout(peakResultTimer);
+        peakResultTimer = undefined;
+      }
     },
   };
 }
