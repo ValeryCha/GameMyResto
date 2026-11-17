@@ -3,6 +3,7 @@ import { createGame } from '../src/simulation/createGame';
 import { placeFurniture } from '../src/simulation/commands';
 import { hireWaiter } from '../src/simulation/shop';
 import { advanceSimulation } from '../src/simulation/tick';
+import { targetGuestCount } from '../src/simulation/guestFlow';
 
 describe('устойчивость команды официантов', () => {
   for (const waiters of [2, 3, 5]) {
@@ -11,6 +12,13 @@ describe('устойчивость команды официантов', () => {
       state.coins += 10_000;
       for (let count = 0; count < waiters; count += 1) hireWaiter(state);
       expect(placeFurniture(state, 'counter', { x: 2, y: 1 }).ok).toBe(true);
+      // Тест проверяет официантов, а не перегрузку одного стула новой входной очередью.
+      state.furniture.push(
+        { id: 'table-stability-2', kind: 'table', position: { x: 3, y: 4 }, rotation: 0 },
+        { id: 'chair-stability-2', kind: 'chair', position: { x: 3, y: 5 }, rotation: 0 },
+        { id: 'table-stability-3', kind: 'table', position: { x: 1, y: 4 }, rotation: 0 },
+        { id: 'chair-stability-3', kind: 'chair', position: { x: 1, y: 5 }, rotation: 0 },
+      );
 
       advanceSimulation(state, 600);
       const servedBefore = state.servedTotal;
@@ -18,7 +26,8 @@ describe('устойчивость команды официантов', () => {
 
       expect(state.servedTotal, JSON.stringify({ employees: state.employees, customers: state.customers, orders: state.orders.filter((order) => order.state !== 'delivered') })).toBeGreaterThan(servedBefore);
       expect(state.employees.filter((employee) => employee.role === 'waiter')).toHaveLength(waiters);
-      expect(state.customers.length).toBeLessThanOrEqual(7);
+      // +1 допускает гостя в leaving, который ещё не удалён из customers после завершения тика.
+      expect(state.customers.length).toBeLessThanOrEqual(targetGuestCount(state) + 1);
       expect(state.orders.length).toBeLessThanOrEqual(state.customers.length);
       for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) {
         const order = state.orders.find((item) => item.id === waiter.taskId);

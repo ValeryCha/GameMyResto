@@ -11,6 +11,7 @@ import { createAppearance } from '../render3d/appearance';
 import { customerSpawnInterval, patienceMultiplier, targetGuestCount } from './guestFlow';
 import { cookingProgress, waiterMovementSteps } from './staff';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
+import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
 
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -22,7 +23,7 @@ function adjacentCells(state: GameState, item: Furniture): Point[] {
 
 function occupiedCells(state: GameState, actor: { id?: string }): Point[] {
   return [...state.employees, ...state.customers]
-    .filter((other) => other.id !== actor.id)
+    .filter((other) => other.id !== actor.id && !('state' in other && other.state === 'queueWaiting'))
     .map((other) => other.position);
 }
 
@@ -68,6 +69,11 @@ function clearEntrance(state: GameState, guest: Customer): boolean {
     .filter((candidate) => candidate.path.length > 0)
     .sort((a, b) => a.path.length - b.path.length)[0]?.point;
   if (!target) return true;
+  if (guest.state === 'queueWaiting') {
+    guest.position = { ...target };
+    guest.target = undefined;
+    return true;
+  }
   guest.state = 'entering';
   guest.target = target;
   if (moveActor(state, guest, target) === 'arrived') {
@@ -75,6 +81,17 @@ function clearEntrance(state: GameState, guest: Customer): boolean {
     guest.target = undefined;
   }
   return true;
+}
+
+function clearQueuedEntrance(state: GameState, guest: Customer): void {
+  clearEntrance(state, guest);
+  guest.state = 'queueWaiting';
+  guest.target = undefined;
+}
+
+function placeInQueue(state: GameState, guest: Customer): void {
+  if (!enqueueGuest(state, guest)) return;
+  clearQueuedEntrance(state, guest);
 }
 
 function unhappyExit(state: GameState, guest: Customer): void {
@@ -97,17 +114,24 @@ export function patienceBonus(state: GameState): number {
 
 function spawnCustomer(state: GameState): boolean {
   const position = entrance(state);
-  if ([...state.employees, ...state.customers].some((actor) => samePoint(actor.position, position))) return false;
+  const blocksEntrance = (actor: Employee | Customer) =>
+    samePoint(actor.position, position) && !('state' in actor && actor.state === 'queueWaiting');
+  if ([...state.employees, ...state.customers].some(blocksEntrance)) return false;
   recordPeakArrival(state);
   const bonus = (1 + patienceBonus(state)) * patienceMultiplier(state);
-  state.customers.push({
+  const guest: Customer = {
     id: `customer-${state.tick}`,
     position,
     state: 'seekingSeat',
     patience: 240 * bonus,
     foodWait: 120 * bonus,
     ...createAppearance(() => nextRandom(state)),
-  });
+  };
+  const earlierGuestNeedsSeat = state.customers.some((other) =>
+    other.id !== guest.id && !other.seatId && !other.waitingForRecipe &&
+    !['queueWaiting', 'leaving', 'seated', 'ordering', 'waitingFood', 'eating'].includes(other.state));
+  state.customers.push(guest);
+  if (earlierGuestNeedsSeat || !reserveSeat(state, guest)) placeInQueue(state, guest);
   return true;
 }
 
@@ -117,6 +141,13 @@ function updateCustomer(state: GameState, guest: Customer): void {
       state.customers = state.customers.filter((item) => item.id !== guest.id);
       state.orders = state.orders.filter((order) => order.customerId !== guest.id);
     }
+    return;
+  }
+
+  if (guest.state === 'queueWaiting') {
+    clearQueuedEntrance(state, guest);
+    if (!advanceQueuedGuest(state, guest, exitTarget(state, guest))) return;
+    if (state.guestQueue[0] === guest.id && reserveSeat(state, guest)) seatQueuedGuest(state, guest);
     return;
   }
 
@@ -176,7 +207,10 @@ function updateCustomer(state: GameState, guest: Customer): void {
   }
   if (!guest.seatId && !guest.waitingForRecipe && reserveSeat(state, guest)) {
     guest.actionUntil = undefined;
-  } else if (!guest.seatId && !guest.waitingForRecipe && clearEntrance(state, guest)) {
+  } else if (!guest.seatId && !guest.waitingForRecipe) {
+    placeInQueue(state, guest);
+    return;
+  } else if (!guest.seatId && clearEntrance(state, guest)) {
     return;
   }
   const action = chooseGuestAction(state, guest);

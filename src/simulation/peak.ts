@@ -94,6 +94,16 @@ export function recordPeakUnhappy(state: GameState): void {
   if (state.peakState.current) state.peakState.current.unhappy += 1;
 }
 
+export function recordPeakQueueRejected(state: GameState): void {
+  recordPeakUnhappy(state);
+  if (state.peakState.current) state.peakState.current.queueRejected += 1;
+}
+
+export function recordPeakQueueTimeout(state: GameState): void {
+  recordPeakUnhappy(state);
+  if (state.peakState.current) state.peakState.current.queueTimeout += 1;
+}
+
 export function recordPeakService(state: GameState, revenue: number): void {
   if (!state.peakState.current) return;
   state.peakState.current.served += 1;

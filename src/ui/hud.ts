@@ -4,6 +4,7 @@ import { experienceThreshold } from '../simulation/progression';
 import { calendarView } from '../simulation/calendar';
 import { createIcon, setButtonIcon, type IconName } from './icons';
 import { peakBottleneck } from '../simulation/peak';
+import { QUEUE_LIMIT } from '../simulation/queue';
 import type { PeakResult } from '../simulation/types';
 
 interface HudCallbacks {
@@ -101,7 +102,13 @@ export function createHud(callbacks: HudCallbacks) {
   peakResult.hidden = true;
   peakResult.setAttribute('role', 'status');
   peakResult.setAttribute('aria-label', 'Итог пикового часа');
-  document.body.append(root, toast, peakBanner, peakResult);
+  const queueIndicator = document.createElement('div');
+  queueIndicator.className = 'hud-peak-result';
+  queueIndicator.dataset.testid = 'guest-queue';
+  queueIndicator.style.top = '222px';
+  queueIndicator.hidden = true;
+  queueIndicator.setAttribute('aria-label', 'Очередь у входа');
+  document.body.append(root, toast, peakBanner, peakResult, queueIndicator);
   let previousRating: number | undefined;
   let ratingTimer: ReturnType<typeof setTimeout> | undefined;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -116,6 +123,11 @@ export function createHud(callbacks: HudCallbacks) {
       values.guests.parentElement!.title = `Планируемый поток гостей: ${model.targetGuests}`;
       values.peak.textContent = model.peak ? `${model.peakRemaining} с` : `через ${model.peakRemaining} с`;
       values.peak.parentElement?.classList.toggle('is-peak', model.peak);
+      const firstQueued = state.customers.find((guest) => guest.id === state.guestQueue[0]);
+      const queuePatience = firstQueued
+        ? Math.ceil(Math.max(0, (firstQueued.queuePatience ?? 0) - (firstQueued.queueWaitedTicks ?? 0)))
+        : 0;
+      queueIndicator.textContent = `Очередь: ${state.guestQueue.length}/${QUEUE_LIMIT}${firstQueued ? ` · терпение первого: ${queuePatience} с` : ''}`;
       const phase = ((state.tick % 180) + 180) % 180;
       if (state.peakState.current) {
         peakBanner.hidden = false;
@@ -171,6 +183,7 @@ export function createHud(callbacks: HudCallbacks) {
     },
     setVisible(visible: boolean) {
       root.hidden = !visible;
+      queueIndicator.hidden = !visible;
       if (!visible) {
         toast.hidden = true;
         peakBanner.hidden = true;

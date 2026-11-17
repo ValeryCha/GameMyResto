@@ -3,7 +3,7 @@ export type FurnitureKind = 'door' | 'stove' | 'table' | 'tableDouble' | 'chair'
 export interface Point { x: number; y: number }
 export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point; taskId?: string; movementCredit?: number }
 export interface Furniture { id: string; kind: FurnitureKind; position: Point; rotation: 0 | 90 | 180 | 270 }
-export type CustomerState = 'entering' | 'waiting' | 'seekingSeat' | 'wandering' | 'inspecting' | 'seated' | 'ordering' | 'waitingFood' | 'eating' | 'leaving';
+export type CustomerState = 'entering' | 'waiting' | 'queueWaiting' | 'seekingSeat' | 'wandering' | 'inspecting' | 'seated' | 'ordering' | 'waitingFood' | 'eating' | 'leaving';
 export type HairStyle = 'short' | 'long' | 'bun' | 'ponytail' | 'curly';
 export interface CustomerAppearance {
   bodyType: 'masculine' | 'feminine';
@@ -15,6 +15,7 @@ export interface CustomerAppearance {
 export interface Customer extends Partial<CustomerAppearance> {
   id: string; position: Point; state: CustomerState; patience: number; target?: Point; orderId?: string; seatId?: string; actionUntil?: number; foodWait?: number;
   hasDesire?: boolean; desiredDishId?: string; waitingForRecipe?: boolean;
+  queueEnteredAt?: number; queueWaitedTicks?: number; queuePatience?: number;
 }
 export interface Order { id: string; customerId: string; state: 'waitingCook' | 'cooking' | 'waitingDelivery' | 'delivered'; progress: number; dishId?: string; desired?: boolean; assignedTo?: string; pickedUp?: boolean }
 export interface CalendarState {
@@ -78,6 +79,11 @@ export interface GameState {
   satisfiedStreak: number;
   desiredServedTotal: number;
   unhappyTotal: number;
+  guestQueue: string[];
+  queueRejectedTotal: number;
+  queueTimeoutTotal: number;
+  queueSeatedTotal: number;
+  queueWaitTicksTotal: number;
   paidExpansions: number;
   purchasedGuestSlots: number;
   upgrades: { cooking: number; waiter: number };

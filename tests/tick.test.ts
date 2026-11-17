@@ -10,17 +10,18 @@ function equipRestaurant(state: ReturnType<typeof createGame>): void {
 }
 
 describe('advanceSimulation', () => {
-  it('гость без места уходит после истечения терпения и снижает рейтинг', () => {
+  it('гость без места уходит из очереди после истечения терпения и снижает рейтинг', () => {
     const state = createGame();
     state.furniture = state.furniture.filter((item) => !['chair', 'table'].includes(item.kind));
+    state.spawnProgress = -10_000;
     advanceSimulation(state, 1);
-    expect(state.customers[0].state).toBe('seekingSeat');
-    const remaining = Math.ceil(state.customers[0].patience);
-    advanceSimulation(state, remaining - 1);
+    expect(state.customers[0].state).toBe('queueWaiting');
+    const remaining = Math.ceil(state.customers[0].queuePatience!);
+    advanceSimulation(state, remaining - 2); // Первый тик ожидания уже прошёл в тик прихода.
     expect(state.customers.find((guest) => guest.id === 'customer-1')).toBeDefined();
     advanceSimulation(state, 1);
     expect(state.customers.find((guest) => guest.id === 'customer-1')?.state).toBe('leaving');
-    expect(state.popularity).toBe(9);
+    expect(state.popularity).toBe(8);
     advanceSimulation(state, 20);
     expect(state.customers.some((guest) => guest.id === 'customer-1'), JSON.stringify(state.customers)).toBe(false);
   });
@@ -48,6 +49,7 @@ describe('advanceSimulation', () => {
   it('гость без еды уходит через 120 секунд без оплаты', () => {
     const state = createGame();
     state.employees = state.employees.filter((employee) => employee.role !== 'chef');
+    state.spawnProgress = -10_000; // Изолируем проверку foodWait от новых гостей и штрафов очереди.
     advanceSimulation(state, 180);
     expect(state.coins).toBe(1_000);
     expect(state.popularity).toBe(9);

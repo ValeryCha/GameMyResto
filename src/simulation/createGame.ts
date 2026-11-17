@@ -6,6 +6,7 @@ export function createGame(): GameState {
     peakState: { activePeakId: null, rewardedPeakIds: [], current: null, last: null },
     coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
     servedTotal: 0, revenueTotal: 0, satisfiedStreak: 0, desiredServedTotal: 0, unhappyTotal: 0,
+    guestQueue: [], queueRejectedTotal: 0, queueTimeoutTotal: 0, queueSeatedTotal: 0, queueWaitTicksTotal: 0,
     paidExpansions: 0, purchasedGuestSlots: 0, upgrades: { cooking: 0, waiter: 0 }, lastDailyReward: '',
     calendar: { lastClaimDate: '', nextDayIndex: 0, cycle: 1 },
     popularity: 10, tick: 0, spawnProgress: 0, width: 8, height: 8,
