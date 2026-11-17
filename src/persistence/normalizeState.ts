@@ -18,7 +18,15 @@ import { inheritExpandedWallpapers } from '../simulation/expansion';
 import { normalizePeakState } from '../simulation/peak';
 import { normalizeQueueState } from '../simulation/queue';
 
+const CURRENT_STATE_VERSION = 2;
+
 export function normalizeState(state: GameState): GameState {
+  if ((state.version ?? 1) < CURRENT_STATE_VERSION) {
+    state.popularity = (state.popularity ?? 50) * 10;
+    state.arrivalProgress = 0;
+    state.version = CURRENT_STATE_VERSION;
+  }
+  state.popularity = Math.max(0, Math.min(1000, Number.isFinite(state.popularity) ? state.popularity : 500));
   state.randomSeed ??= 123456789; state.guestLimit ??= 7; state.level ??= 1; state.purchasedGuestSlots ??= 0;
   state.purchasedGuestSlots = Math.max(0, Math.min(10, Math.floor(state.purchasedGuestSlots)));
   state.maxGuestLimit = Math.max(state.maxGuestLimit ?? 0, state.guestLimit); state.furnitureInventory ??= {};

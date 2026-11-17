@@ -13,7 +13,7 @@ export interface DishSelection {
 function weightedDesiredDish(state: GameState): Dish | undefined {
   const dishes = availableDishes(state);
   if (!dishes.length) return undefined;
-  const rating = state.popularity / 100;
+  const rating = state.popularity / 1000;
   const weights = dishes.map((dish) => 1 + rating * (dish.unlockLevel - 1));
   let roll = nextRandom(state) * weights.reduce((sum, weight) => sum + weight, 0);
   for (let i = 0; i < dishes.length; i += 1) {
@@ -76,7 +76,7 @@ export function settleOrder(state: GameState, guest: Customer, order: Order): nu
   state.servedTotal += 1;
   state.satisfiedStreak += 1;
   if (order.desired) state.desiredServedTotal += 1;
-  state.popularity = Math.min(100, state.popularity + 0.1);
+  state.popularity = Math.min(1000, state.popularity + 1);
   guest.state = 'leaving';
   guest.seatId = undefined;
   return revenue;

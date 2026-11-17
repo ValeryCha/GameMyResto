@@ -84,23 +84,25 @@ test('желание без рецепта не снижает рейтинг, �
     const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
     const state = save.state;
     state.level = 2;
-    state.popularity = 50;
+    state.popularity = 500;
     const missing = { id: 'missing', position: { x: 5, y: 5 }, state: 'ordering' as const, patience: 300, hasDesire: true, desiredDishId: 'pasta' };
     const order = createGuestOrder(state, missing);
     const ratingAfterMissing = state.popularity;
     state.unlockedDishIds.push('pasta');
     const desired = createGuestOrder(state, { ...missing, state: 'ordering' });
     state.popularity = 0;
+    state.tick = 100; // Вне пика: tipMultiplier при рейтинге 0 равен 1, оплата желания 7 × 5 = 35.
     return {
       missingOrder: order,
       ratingAfterMissing,
       desiredPayment: paymentFor(state, DISHES[1], Boolean(desired?.desired)),
       normalPayment: paymentFor(state, DISHES[1], false),
+      expectedDesiredPayment: Math.round(DISHES[1].price * (state.tick % 180 < 60 ? 1.5 : 1) * 5),
     };
   });
   expect(result.missingOrder).toBeUndefined();
-  expect(result.ratingAfterMissing).toBe(50);
-  expect(result.desiredPayment).toBe(result.normalPayment * 5);
+  expect(result.ratingAfterMissing).toBe(500);
+  expect(result.desiredPayment).toBe(result.expectedDesiredPayment);
 });
 
 test('50 гостей и новые поля сохраняются после перезагрузки без ошибок и переполнения', async ({ page }) => {
@@ -170,4 +172,32 @@ test('50 гостей и новые поля сохраняются после �
   expect(averageFrameMs, JSON.stringify({ baselineFrameMs, averageFrameMs })).toBeLessThan(baselineFrameMs * 1.5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
+});
+
+
+test('сейв версии 1 мигрирует рейтинг 47 → 470 только один раз', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  await page.evaluate(() => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
+    save.state.version = 1;
+    save.state.popularity = 47;
+    save.state.arrivalProgress = 0.75;
+    localStorage.setItem('moy-restoran:primary', JSON.stringify(save));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await expect(page.getByTestId('hud-status')).toContainText('Рейтинг: 470');
+  await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  const migrated = await page.evaluate(() => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
+    save.state.arrivalProgress = 0.75;
+    localStorage.setItem('moy-restoran:primary', JSON.stringify(save));
+    return { version: save.state.version, popularity: save.state.popularity };
+  });
+  expect(migrated).toEqual({ version: 2, popularity: 470 });
+  await page.reload();
+  await page.getByRole('button', { name: 'Играть' }).click();
+  await expect(page.getByTestId('hud-status')).toContainText('Рейтинг: 470');
 });

@@ -19,7 +19,7 @@ export function placeFurniture(state: GameState, kind: FurnitureKind, position: 
   if (cells.some((point) => occupied(state, point))) return { ok: false, reason: 'Клетка занята' };
   if (state.coins < item.price) return { ok: false, reason: 'Недостаточно монет' };
   state.coins -= item.price;
-  state.popularity = Math.min(100, state.popularity + item.rating);
+  state.popularity = Math.min(1000, state.popularity + item.rating);
   if (kind === 'plant') applyDecorationRating(state, decorationRating(CATALOG.plant.price));
   state.furniture.push({ id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation: 0 });
   return { ok: true };
@@ -33,7 +33,7 @@ export function moveDoor(state: GameState, position: Point): CommandResult {
   if (occupied(state, position, door.id)) return { ok: false, reason: 'Клетка занята' };
   if (state.coins < 100) return { ok: false, reason: 'Недостаточно монет' };
   state.coins -= 100;
-  state.popularity = Math.min(100, state.popularity + 2);
+  state.popularity = Math.min(1000, state.popularity + 20);
   door.position = { ...position };
   door.rotation = position.x === 0 ? 90 : position.x === state.width - 1 ? 270 : position.y === 0 ? 0 : 180;
   return { ok: true };

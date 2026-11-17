@@ -120,7 +120,7 @@ export function peakBottleneck(state: GameState): 'места' | 'кухня' | 
   const waiters = Math.min(5, state.employees.filter((employee) => employee.role === 'waiter').length);
   const counters = Math.min(5, state.furniture.filter((item) => item.kind === 'counter').length);
   const dishes = availableDishes(state);
-  const rating = state.popularity / 100;
+  const rating = state.popularity / 1000;
   const desiredWeights = dishes.map((dish) => 1 + rating * (dish.unlockLevel - 1));
   const desiredWeightTotal = desiredWeights.reduce((sum, weight) => sum + weight, 0);
   const cookTime = dishes.length

@@ -7,7 +7,7 @@ export function getHudModel(state: GameState) {
     coins: state.coins,
     experience: state.experience,
     level: state.level,
-    popularity: state.popularity.toFixed(1),
+    popularity: String(Math.round(state.popularity)),
     guests: state.customers.length,
     capacity: capacity(state),
     arrivalsPer60: arrivalRate(state) * 60,

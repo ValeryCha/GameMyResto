@@ -17,7 +17,7 @@ describe('задания на ключевых рубежах', () => {
     const state = createGame(); const test = (id: string) => QUESTS.find((quest) => quest.id === id)!.test(state);
     expect(test('quest-25')).toBe(false); state.purchasedGuestSlots = 3; expect(test('quest-25')).toBe(true);
     expect(test('quest-20')).toBe(false); state.revenueTotal = 2500; expect(test('quest-20')).toBe(true);
-    expect(test('quest-33')).toBe(false); state.popularity = 85; state.servedTotal = 250; expect(test('quest-33')).toBe(true);
+    expect(test('quest-33')).toBe(false); state.popularity = 850; state.servedTotal = 250; expect(test('quest-33')).toBe(true);
   });
   it('каждое задание имеет реальный предикат и денежную награду', () => {
     for (const quest of QUESTS) {

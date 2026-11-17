@@ -43,7 +43,7 @@ it('гость с недоступным желанием реально пер�
   expect(positions.size).toBeGreaterThan(1);
   advanceSimulation(state, 220);
   expect(state.customers.find((guest) => guest.id === 'wish')?.state).toBe('leaving');
-  expect(state.popularity).toBe(10);
+  expect(state.popularity).toBe(100);
   expect(state.unhappyTotal).toBe(0);
   advanceSimulation(state, 30);
   expect(state.customers.some((guest) => guest.id === 'wish')).toBe(false);

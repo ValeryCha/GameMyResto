@@ -100,7 +100,7 @@ function unhappyExit(state: GameState, guest: Customer): void {
   guest.seatId = undefined;
   recordPeakUnhappy(state);
   if (guest.waitingForRecipe) return;
-  state.popularity = Math.max(0, state.popularity - 1);
+  state.popularity = Math.max(0, state.popularity - 10);
   state.unhappyTotal += 1;
   state.satisfiedStreak = 0;
 }

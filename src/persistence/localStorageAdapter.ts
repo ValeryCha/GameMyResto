@@ -35,7 +35,7 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (!raw) return null;
     try {
       const save = JSON.parse(raw) as SaveEnvelope;
-      if (save.schema !== 1 || save.state?.version !== 1) return null;
+      if (save.schema !== 1 || ![1, 2].includes(save.state?.version ?? 1)) return null;
       return normalizeState(save.state);
     } catch {
       return null;

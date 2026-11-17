@@ -8,10 +8,10 @@ import { paintingById } from '../content/paintings';
 import type { GameState } from './types';
 
 /** Небольшая прибавка за дешёвый декор и заметная — за премиальный. */
-export const decorationRating = (price: number): number => Math.max(1, Math.round(price / 500));
+export const decorationRating = (price: number): number => Math.max(10, Math.round(price / 50));
 export function applyDecorationRating(state: GameState, delta: number): void {
   state.decorationRatingBonus = Math.max(0, state.decorationRatingBonus + delta);
-  state.popularity = Math.max(0, Math.min(100, state.popularity + delta));
+  state.popularity = Math.max(0, Math.min(1000, state.popularity + delta));
 }
 export function calculateDecorationRating(state: GameState): number {
   let rating = state.furniture.reduce((sum, item) => sum + (item.kind === 'plant' ? decorationRating(CATALOG.plant.price) : 0), 0);

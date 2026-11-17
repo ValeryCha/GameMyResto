@@ -46,7 +46,39 @@ describe('локальные сохранения', () => {
     expect(normalized.randomSeed).toBe(123456789);
     expect(normalized.upgrades).toEqual({ cooking: 0, waiter: 0 });
     expect(normalized.lastDailyReward).toBe('');
-    expect(normalized.version).toBe(1);
+    expect(normalized.version).toBe(2);
+  });
+
+  it('однократно мигрирует рейтинг 47 → 470 и сбрасывает старый прогресс прихода', () => {
+    const legacy = createGame();
+    legacy.version = 1;
+    legacy.popularity = 47;
+    legacy.arrivalProgress = 0.75;
+    legacy.coins = 777;
+
+    normalizeState(legacy);
+    expect(legacy.version).toBe(2);
+    expect(legacy.popularity).toBe(470);
+    expect(legacy.arrivalProgress).toBe(0);
+    expect(legacy.coins).toBe(777);
+
+    legacy.arrivalProgress = 0.5;
+    normalizeState(legacy);
+    expect(legacy.popularity).toBe(470);
+    expect(legacy.arrivalProgress).toBe(0.5);
+  });
+
+  it('ограничивает рейтинг версии 2 диапазоном 0–1000 и восстанавливает некорректное значение', () => {
+    const state = createGame();
+    state.popularity = 1200;
+    normalizeState(state);
+    expect(state.popularity).toBe(1000);
+    state.popularity = -10;
+    normalizeState(state);
+    expect(state.popularity).toBe(0);
+    state.popularity = Number.NaN;
+    normalizeState(state);
+    expect(state.popularity).toBe(500);
   });
 
   it('не выдаёт стартовые награды повторно в сохранении выше первого уровня', () => {

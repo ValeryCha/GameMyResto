@@ -18,9 +18,9 @@ function addGuest(state: GameState, id: string): Customer {
 }
 
 describe('очередь у входа', () => {
-  it('ограничена пятью гостями и применяет отказ −1 без двойного unhappy', () => {
+  it('ограничена пятью гостями и применяет отказ −10 без двойного unhappy', () => {
     const state = createGame();
-    state.popularity = 50;
+    state.popularity = 500;
     state.satisfiedStreak = 4;
     state.ownedLoyaltyItems = ['plant'];
     state.tick = 1;
@@ -33,7 +33,7 @@ describe('очередь у входа', () => {
 
     expect(rejected.state).toBe('leaving');
     expect(state.guestQueue).toHaveLength(5);
-    expect(state.popularity).toBe(49);
+    expect(state.popularity).toBe(490);
     expect(state.satisfiedStreak).toBe(0);
     expect(state.unhappyTotal).toBe(1);
     expect(state.queueRejectedTotal).toBe(1);
@@ -42,21 +42,21 @@ describe('очередь у входа', () => {
     expect(state.peakState.current?.queueTimeout).toBe(0);
   });
 
-  it('при обычном таймауте применяет −2 и отдельно учитывает событие пика', () => {
+  it('при обычном таймауте применяет −20 и отдельно учитывает событие пика', () => {
     const state = createGame();
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = 1;
     beginPeak(state);
     const customer = addGuest(state, 'timeout');
     customer.queuePatience = 2;
 
     expect(advanceQueuedGuest(state, customer, { x: 0, y: 7 })).toBe(true);
-    expect(state.popularity).toBe(50);
+    expect(state.popularity).toBe(500);
     expect(advanceQueuedGuest(state, customer, { x: 0, y: 7 })).toBe(false);
 
     expect(customer.state).toBe('leaving');
     expect(state.guestQueue).toEqual([]);
-    expect(state.popularity).toBe(48);
+    expect(state.popularity).toBe(480);
     expect(state.unhappyTotal).toBe(1);
     expect(state.queueTimeoutTotal).toBe(1);
     expect(state.peakState.current?.unhappy).toBe(1);
@@ -64,16 +64,16 @@ describe('очередь у входа', () => {
     expect(state.peakState.current?.queueRejected).toBe(0);
   });
 
-  it('ограничивает штраф повторного таймаута значением −5', () => {
+  it('ограничивает штраф повторного таймаута значением −50', () => {
     const state = createGame();
-    state.popularity = 50;
+    state.popularity = 500;
     const customer = addGuest(state, 'timeout-cap');
     customer.queuePatience = 1;
     customer.queueWaitedTicks = 4;
 
     advanceQueuedGuest(state, customer, { x: 0, y: 7 });
 
-    expect(state.popularity).toBe(45);
+    expect(state.popularity).toBe(450);
     expect(state.queueTimeoutTotal).toBe(1);
   });
 
@@ -135,7 +135,7 @@ describe('очередь у входа', () => {
     expect(state.queueWaitTicksTotal).toBe(0);
     expect(first.queueWaitedTicks).toBe(0);
     expect(first.queueEnteredAt).toBe(0);
-    expect(first.queuePatience).toBe(90 * (0.85 + 0.3 * state.popularity! / 100));
+    expect(first.queuePatience).toBe(90 * (0.85 + 0.3 * state.popularity! / 1000));
     expect(first.seatId).toBeUndefined();
   });
 

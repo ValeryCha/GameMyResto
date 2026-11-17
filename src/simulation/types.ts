@@ -62,7 +62,7 @@ export interface PeakResult extends PeakStats {
   perfect: boolean;
 }
 export interface GameState {
-  version: 1;
+  version: number;
   peakState: {
     activePeakId: number | null;
     rewardedPeakIds: number[];
@@ -89,6 +89,7 @@ export interface GameState {
   upgrades: { cooking: number; waiter: number };
   lastDailyReward: string;
   calendar: CalendarState;
+  /** Рейтинг ресторана в диапазоне 0–1000. */
   popularity: number;
   tick: number;
   arrivalProgress: number;

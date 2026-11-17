@@ -9,14 +9,14 @@ describe('магазин и рейтинг', () => {
     addTestFunds(state);
     expect(state.coins).toBe(51000);
     expect(state.experience).toBe(0);
-    expect(state.popularity).toBe(10);
+    expect(state.popularity).toBe(100);
   });
 
   it('покупает стол 1×1 за 100 и повышает рейтинг', () => {
     const state = createGame();
     expect(placeFurniture(state, 'table', { x: 3, y: 5 }).ok).toBe(true);
     expect(state.coins).toBe(900);
-    expect(state.popularity).toBe(11);
+    expect(state.popularity).toBe(110);
   });
 
   it('проверяет обе клетки двойного стола и не списывает при ошибке', () => {
@@ -34,7 +34,7 @@ describe('магазин и рейтинг', () => {
     expect(increaseGuestLimit(state).ok).toBe(true);
     expect(expandRestaurant(state).ok).toBe(true);
     expect([state.width, state.height]).toEqual([10, 10]);
-    expect(state.popularity).toBe(38);
+    expect(state.popularity).toBe(380);
   });
 
   it('переносит дверь только на свободную границу за 100', () => {

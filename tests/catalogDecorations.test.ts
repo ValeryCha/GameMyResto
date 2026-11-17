@@ -124,7 +124,7 @@ describe('картины', () => {
     expect(removePainting(state, id).ok).toBe(true);
     expect(state.coins).toBe(550);
     expect(state.ownedPaintings).toEqual(['hills', 'hills']);
-    expect(state.decorationRatingBonus).toBe(rating - 1);
+    expect(state.decorationRatingBonus).toBe(rating - 10);
   });
 });
 

@@ -55,7 +55,7 @@ describe('окна', () => {
     const id = state.appliedWindows[0].id; const coins = state.coins; const rating = state.decorationRatingBonus;
     expect(moveWindow(state, id, 'west', 2).ok).toBe(true); expect(state.coins).toBe(coins);
     expect(removeWindow(state, id).ok).toBe(true); expect(state.coins).toBe(coins + 400);
-    expect(state.decorationRatingBonus).toBe(rating - 2);
+    expect(state.decorationRatingBonus).toBe(rating - 16);
   });
   it('восстанавливает только корректные окна из сохранения и учитывает их рейтинг', () => {
     const state = game();
@@ -66,6 +66,6 @@ describe('окна', () => {
     ];
     normalizeState(state);
     expect(state.appliedWindows).toHaveLength(1); expect(state.ownedWindows).toContain('archWindow');
-    expect(state.decorationRatingBonus).toBe(7);
+    expect(state.decorationRatingBonus).toBe(70);
   });
 });

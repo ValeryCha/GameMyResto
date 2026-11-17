@@ -300,7 +300,7 @@ export function createShopPanel(callbacks: ShopCallbacks) {
     update(state: GameState) {
       summary.textContent = activeCategory === 'loyalty'
         ? `Баланс: ${state.coins} монет · Общий бонус терпения: +${loyaltyBonus(state)}% (максимум +100%)`
-        : `Баланс: ${state.coins} монет · Рейтинг: ${state.popularity.toFixed(1)}`;
+        : `Баланс: ${state.coins} монет · Рейтинг: ${Math.round(state.popularity)}`;
       decorationTabs.hidden = activeCategory !== 'decorations';
       root.querySelectorAll<HTMLButtonElement>('[data-reset-decoration]').forEach((button) => {
         const section = button.dataset.resetDecoration as DecorationSection;

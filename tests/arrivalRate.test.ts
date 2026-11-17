@@ -23,17 +23,17 @@ function highThroughput(state: GameState): void {
 }
 
 describe('arrivalRate', () => {
-  it('считает спрос уровня, слотов и рейтинга на шкале 0–100', () => {
+  it('считает спрос уровня, слотов и рейтинга на шкале 0–1000', () => {
     const state = createGame();
     state.level = 33;
     state.purchasedGuestSlots = 10;
-    state.popularity = 50;
+    state.popularity = 500;
     expect(levelDemand(state)).toBeCloseTo(0.504);
     expect(slotDemand(state)).toBeCloseTo(0.3);
     expect(ratingFactor(state)).toBe(1);
     state.popularity = 0;
     expect(ratingFactor(state)).toBe(0.75);
-    state.popularity = 100;
+    state.popularity = 1000;
     expect(ratingFactor(state)).toBe(1.25);
   });
 
@@ -49,7 +49,7 @@ describe('arrivalRate', () => {
   it('умножает исходный спрос на 1.5 в пик', () => {
     const state = createGame();
     highThroughput(state);
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = 60;
     expect(arrivalRate(state)).toBeCloseTo(0.12);
     state.tick = 0;
@@ -59,7 +59,7 @@ describe('arrivalRate', () => {
   it('учитывает купленные слоты до общего капа', () => {
     const state = createGame();
     highThroughput(state);
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = 60;
     state.purchasedGuestSlots = 10;
     expect(arrivalRate(state)).toBeCloseTo(0.42);
@@ -69,7 +69,7 @@ describe('arrivalRate', () => {
     const state = createGame();
     state.employees.push({ id: 'waiter', role: 'waiter', position: { x: 0, y: 0 }, energy: 100 });
     state.furniture.push({ id: 'counter', kind: 'counter', position: { x: 2, y: 1 }, rotation: 0 });
-    state.popularity = 100;
+    state.popularity = 1000;
     expect(arrivalRate(state)).toBeCloseTo(throughput(state) * 1.3);
   });
 
@@ -90,7 +90,7 @@ describe('arrivalRate', () => {
       { id: 'table-3', kind: 'table', position: { x: 4, y: 4 }, rotation: 0 },
       { id: 'chair-3', kind: 'chair', position: { x: 4, y: 5 }, rotation: 0 },
     );
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = 60;
     expect(capacity(state)).toBe(3);
     expect(arrivalRate(state)).toBeCloseTo(0.1196); // raw 0.12 → кап 0.092 × 1.3.

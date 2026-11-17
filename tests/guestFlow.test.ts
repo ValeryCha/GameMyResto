@@ -28,7 +28,7 @@ describe('базовые параметры потока гостей', () => {
     state.popularity = 0;
     expect(patienceMultiplier(state)).toBe(0.85);
     expect(tipMultiplier(state)).toBe(1);
-    state.popularity = 100;
+    state.popularity = 1000;
     expect(patienceMultiplier(state)).toBe(1.15);
     expect(tipMultiplier(state)).toBe(1.2);
   });

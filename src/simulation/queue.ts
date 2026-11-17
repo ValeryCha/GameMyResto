@@ -20,7 +20,7 @@ function applyQueuePenalty(state: GameState, guest: Customer, penalty: number): 
 export function enqueueGuest(state: GameState, guest: Customer): boolean {
   state.guestQueue ??= [];
   if (state.guestQueue.length >= QUEUE_LIMIT) {
-    applyQueuePenalty(state, guest, 1);
+    applyQueuePenalty(state, guest, 10);
     state.queueRejectedTotal += 1;
     recordPeakQueueRejected(state);
     guest.target = { ...guest.position };
@@ -42,7 +42,7 @@ export function advanceQueuedGuest(state: GameState, guest: Customer, exit: Poin
   if (guest.queueWaitedTicks < patience) return true;
 
   const timeoutSteps = Math.floor(guest.queueWaitedTicks / Math.max(1, patience));
-  applyQueuePenalty(state, guest, Math.min(5, 1 + timeoutSteps));
+  applyQueuePenalty(state, guest, Math.min(50, 10 + 10 * timeoutSteps));
   state.queueTimeoutTotal += 1;
   recordPeakQueueTimeout(state);
   guest.target = exit;

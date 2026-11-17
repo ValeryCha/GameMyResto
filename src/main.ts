@@ -288,7 +288,7 @@ function resetDecoration(section: DecorationSection): void {
   state.appliedChefSkins = state.appliedChefSkins.filter(keepFurniture);
   state.appliedWaiterSkins = state.appliedWaiterSkins.filter(keepFurniture);
   state.decorationRatingBonus = calculateDecorationRating(state);
-  state.popularity = Math.max(0, Math.min(100, state.popularity - Math.max(0, ratingBefore - state.decorationRatingBonus)));
+  state.popularity = Math.max(0, Math.min(1000, state.popularity - Math.max(0, ratingBefore - state.decorationRatingBonus)));
   storage.save(state); shop.update(state); hud.update(state, localDate());
   hud.notify('Стандартный вид восстановлен бесплатно');
 }

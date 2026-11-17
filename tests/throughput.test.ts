@@ -32,7 +32,7 @@ describe('throughput', () => {
   it('использует взвешенное T_cook доступного меню', () => {
     const state = createGame();
     state.unlockedDishIds = DISHES.map((dish) => dish.id);
-    state.popularity = 50;
+    state.popularity = 500;
     expect(weightedCookTime(state)).toBeCloseTo(10.19, 2);
     state.unlockedDishIds = ['soup'];
     expect(weightedCookTime(state)).toBe(6);

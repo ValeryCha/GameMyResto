@@ -31,21 +31,21 @@ test('магазин списывает точную цену и не плати
   await page.getByRole('button', { name: 'Одиночный стол — 100 монет' }).click();
   await canvas.click({ position: { x: 685, y: 354 } });
   await expect(hud).toContainText('Монеты: 800');
-  await expect(hud).toContainText('Рейтинг: 11');
+  await expect(hud).toContainText('Рейтинг: 110');
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.locator('[data-shop-category="hall"]').click();
   await page.getByRole('button', { name: 'Двойной стол — 200 монет' }).click();
   await canvas.click({ position: { x: 735, y: 385 } });
   await expect(hud).toContainText('Монеты: 400');
-  await expect(hud).toContainText('Рейтинг: 13');
+  await expect(hud).toContainText('Рейтинг: 130');
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await page.locator('[data-shop-category="hall"]').click();
   await page.getByRole('button', { name: 'Стул — 75 монет' }).click();
   await canvas.click({ position: { x: 620, y: 395 } });
   await expect(hud).toContainText('Монеты: 250');
-  await expect(hud).toContainText('Рейтинг: 14');
+  await expect(hud).toContainText('Рейтинг: 140');
   await page.screenshot({ path: 'artifacts/restaurant-shop-furniture.png' });
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
@@ -69,7 +69,7 @@ test('магазин списывает точную цену и не плати
   await page.reload();
   await page.getByRole('button', { name: 'Играть' }).click();
   await expect(hud).toContainText(`Монеты: ${cancelledBalance}`);
-  await expect(hud).toContainText('Рейтинг: 14');
+  await expect(hud).toContainText('Рейтинг: 140');
   expect(errors).toEqual([]);
 });
 

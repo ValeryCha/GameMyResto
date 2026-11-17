@@ -80,9 +80,9 @@ export function createQuestPanel(onClose?: () => void) {
       bar.value = Math.min(state.experience, bar.max);
       rating.replaceChildren();
       const ratingTitle = document.createElement('strong');
-      ratingTitle.append(createIcon('rating'), document.createTextNode(`Рейтинг: ${state.popularity.toFixed(1)}`));
+      ratingTitle.append(createIcon('rating'), document.createTextNode(`Рейтинг: ${Math.round(state.popularity)}`));
       const details = document.createElement('span');
-      details.textContent = `Декорации: +${state.decorationRatingBonus} · Обслуживание: ${(state.popularity - state.decorationRatingBonus).toFixed(1)}`;
+      details.textContent = `Декорации: +${Math.round(state.decorationRatingBonus)} · Обслуживание: ${Math.round(state.popularity - state.decorationRatingBonus)}`;
       rating.append(ratingTitle, details);
       const activeQuest = QUESTS.find((quest) => quest.level === state.level && !state.completedQuestIds.includes(quest.id));
       for (const row of rows) {

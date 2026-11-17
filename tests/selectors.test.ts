@@ -9,7 +9,7 @@ describe('модель HUD', () => {
     expect(getHudModel(state)).toMatchObject({
       coins: 1000,
       level: 1,
-      popularity: '10.0',
+      popularity: '100',
       guests: 0,
       capacity: 1,
       arrivalsPer60: 0,

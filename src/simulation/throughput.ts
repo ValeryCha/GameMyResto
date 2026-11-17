@@ -15,7 +15,7 @@ const clampStaff = (value: number): number => Math.max(0, Math.min(5, value));
 export function weightedCookTime(state: GameState): number {
   const dishes = availableDishes(state);
   if (!dishes.length) return 0;
-  const rating = state.popularity / 100;
+  const rating = state.popularity / 1000;
   const desiredWeights = dishes.map((dish) => 1 + rating * (dish.unlockLevel - 1));
   const desiredWeightTotal = desiredWeights.reduce((sum, weight) => sum + weight, 0);
   return dishes.reduce((sum, dish, index) => sum + dish.cookSeconds *

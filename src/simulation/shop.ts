@@ -9,7 +9,7 @@ import { MAX_UPGRADE_LEVEL, MAX_WAITERS, UPGRADE_LEVELS, upgradePrice, waiterHir
 function spend(state: GameState, price: number, rating: number): boolean {
   if (state.coins < price) return false;
   state.coins -= price;
-  state.popularity = Math.min(100, state.popularity + rating);
+  state.popularity = Math.min(1000, state.popularity + rating);
   return true;
 }
 
@@ -51,7 +51,7 @@ export function hireWaiter(state: GameState): CommandResult {
       ![...state.employees, ...state.customers].some((actor) => actor.position.x === point.x && actor.position.y === point.y))
     .sort((a, b) => Math.abs(a.x - 2) + Math.abs(a.y - 2) - Math.abs(b.x - 2) - Math.abs(b.y - 2))[0];
   if (!position) return { ok: false, reason: 'Нет свободной клетки для официанта' };
-  if (!spend(state, waiterHirePrice(count), 10)) return insufficient;
+  if (!spend(state, waiterHirePrice(count), 100)) return insufficient;
   const id = `waiter-${state.tick}-${state.employees.length}`;
   state.employees.push({ id, role: 'waiter', position, energy: 100, movementCredit: 0 });
   return { ok: true };
@@ -59,14 +59,14 @@ export function hireWaiter(state: GameState): CommandResult {
 
 export function increaseGuestLimit(state: GameState): CommandResult {
   if (state.purchasedGuestSlots >= MAX_PURCHASED_SLOTS) return { ok: false, reason: 'Все дополнительные слоты куплены' };
-  if (!spend(state, guestSlotPrice(state.purchasedGuestSlots), 3)) return insufficient;
+  if (!spend(state, guestSlotPrice(state.purchasedGuestSlots), 30)) return insufficient;
   state.purchasedGuestSlots += 1;
   recalculateGuestLimit(state);
   return { ok: true };
 }
 
 export function expandRestaurant(state: GameState): CommandResult {
-  if (!spend(state, 50000, 15)) return insufficient;
+  if (!spend(state, 50000, 150)) return insufficient;
   expandBounds(state);
   state.paidExpansions += 1;
   return { ok: true };

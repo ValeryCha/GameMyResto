@@ -45,5 +45,5 @@ export const QUESTS: Quest[] = [
   mainQuest(20, 'Первая выручка', 'Заработайте 2500 монет с блюд', (state) => state.revenueTotal >= 2500),
   mainQuest(25, 'Резерв мест', 'Купите не менее 3 слотов', (state) => state.purchasedGuestSlots >= 3),
   mainQuest(30, 'Новые залы', 'Оплатите второе расширение', (state) => state.paidExpansions >= 2),
-  mainQuest(33, 'Легенда города', 'Рейтинг 85 и 250 обслуженных гостей', (state) => state.popularity >= 85 && state.servedTotal >= 250),
+  mainQuest(33, 'Легенда города', 'Рейтинг 850 и 250 обслуженных гостей', (state) => state.popularity >= 850 && state.servedTotal >= 250),
 ];

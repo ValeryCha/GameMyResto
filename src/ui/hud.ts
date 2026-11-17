@@ -158,9 +158,9 @@ export function createHud(callbacks: HudCallbacks) {
       experienceBar.max = Math.max(threshold, 1);
       experienceBar.value = Math.min(state.experience, experienceBar.max);
       calendarBadge.hidden = calendarView(state, today).availableIndex < 0;
-      if (previousRating !== undefined && Math.abs(state.popularity - previousRating) > 0.001) {
+      if (previousRating !== undefined && Math.abs(state.popularity - previousRating) > 1) {
         const delta = state.popularity - previousRating;
-        ratingChange.textContent = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`;
+        ratingChange.textContent = `${delta > 0 ? '+' : ''}${Math.round(delta)}`;
         ratingChange.classList.toggle('is-negative', delta < 0);
         if (ratingTimer) clearTimeout(ratingTimer);
         ratingTimer = setTimeout(() => { ratingChange.textContent = ''; }, 2000);

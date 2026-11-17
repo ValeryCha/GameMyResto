@@ -28,7 +28,7 @@ describe('advanceSimulation', () => {
     expect(state.customers.find((guest) => guest.id === 'customer-1')).toBeDefined();
     advanceSimulation(state, 1);
     expect(state.customers.find((guest) => guest.id === 'customer-1')?.state).toBe('leaving');
-    expect(state.popularity).toBe(8);
+    expect(state.popularity).toBe(80);
     advanceSimulation(state, 20);
     expect(state.customers.some((guest) => guest.id === 'customer-1'), JSON.stringify(state.customers)).toBe(false);
   });
@@ -63,7 +63,7 @@ describe('advanceSimulation', () => {
     state.arrivalProgress = -10_000; // Изолируем проверку foodWait от новых гостей и штрафов очереди.
     advanceSimulation(state, 180);
     expect(state.coins).toBe(1_000);
-    expect(state.popularity).toBe(9);
+    expect(state.popularity).toBe(90);
     expect(state.customers.some((guest) => guest.id === 'customer-1')).toBe(false);
   });
 
@@ -133,6 +133,6 @@ describe('advanceSimulation', () => {
     advanceSimulation(state, 1_000);
     for (const employee of state.employees) expect(employee.energy).toBeGreaterThanOrEqual(0);
     expect(state.popularity).toBeGreaterThanOrEqual(0);
-    expect(state.popularity).toBeLessThanOrEqual(100);
+    expect(state.popularity).toBeLessThanOrEqual(1000);
   });
 });

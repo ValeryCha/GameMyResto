@@ -36,7 +36,7 @@ describe('пиковый час', () => {
 
   it('применяет ×1.5 только к текущему множителю чаевых и один раз', () => {
     const state = createGame();
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = 100;
     const regular = paymentFor(state, DISHES[0], false);
     expect(regular).toBe(Math.round(DISHES[0].price * 1.1));
@@ -54,7 +54,7 @@ describe('пиковый час', () => {
 
   it.each([60, 240, 420])('не умножает чаевые при расчёте на граничном тике %i вне пика', (tick) => {
     const state = createGame();
-    state.popularity = 50;
+    state.popularity = 500;
     state.tick = tick;
     state.peakState.activePeakId = Math.floor((tick - 1) / 180);
     state.peakState.current = {

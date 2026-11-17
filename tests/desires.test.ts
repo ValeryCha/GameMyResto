@@ -28,7 +28,7 @@ describe('желания и оплата', () => {
     expect(customer.state).toBe('wandering');
     expect(customer.waitingForRecipe).toBe(true);
     expect(customer.patience).toBe(240);
-    expect(state.popularity).toBe(10);
+    expect(state.popularity).toBe(100);
     expect(state.unhappyTotal).toBe(0);
     expect(state.satisfiedStreak).toBe(4);
     expect(state.orders).toHaveLength(0);
@@ -55,9 +55,19 @@ describe('желания и оплата', () => {
     }
   });
 
+  it('добавляет 1 пункт рейтинга за обслуженный заказ на шкале 0–1000', () => {
+    const state = createGame();
+    state.popularity = 500;
+    state.tick = 100;
+    const customer = guest('rating-reward');
+    const order = createGuestOrder(state, { ...customer, hasDesire: false })!;
+    settleOrder(state, customer, order);
+    expect(state.popularity).toBe(501);
+  });
+
   it('платит ×5 и до 20 процентов чаевых, обновляя статистику', () => {
     const state = createGame();
-    state.popularity = 100;
+    state.popularity = 1000;
     // tick 100 — вне пика, проверяется базовая оплата без peak-множителя.
     state.tick = 100;
     expect(paymentFor(state, DISHES[0], true)).toBe(30);
@@ -71,6 +81,7 @@ describe('желания и оплата', () => {
     expect(state.servedTotal).toBe(1);
     expect(state.desiredServedTotal).toBe(1);
     expect(state.satisfiedStreak).toBe(1);
+    expect(state.popularity).toBe(1000); // +1 не превышает верхнюю границу шкалы.
     expect(customer.state).toBe('leaving');
   });
 });

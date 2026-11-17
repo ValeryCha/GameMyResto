@@ -22,7 +22,7 @@ export function slotDemand(state: GameState): number {
 }
 
 export function ratingFactor(state: GameState): number {
-  return 0.75 + 0.50 * state.popularity / 100;
+  return 0.75 + 0.50 * state.popularity / 1000;
 }
 
 export function occupancyFactor(state: GameState): number {
@@ -43,5 +43,5 @@ export function isPeakHour(tick: number): boolean {
   return ((tick % 180) + 180) % 180 < 60;
 }
 
-export const patienceMultiplier = (state: GameState): number => 0.85 + 0.3 * state.popularity / 100;
-export const tipMultiplier = (state: GameState): number => 1 + 0.2 * state.popularity / 100;
+export const patienceMultiplier = (state: GameState): number => 0.85 + 0.3 * state.popularity / 1000;
+export const tipMultiplier = (state: GameState): number => 1 + 0.2 * state.popularity / 1000;

@@ -28,7 +28,7 @@ export function placePurchasedFurniture(state: GameState, kind: FurnitureKind, p
   }
   state.furniture.push({ id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation });
   state.furnitureInventory[kind] = amount - 1;
-  state.popularity = Math.min(100, state.popularity + CATALOG[kind].rating);
+  state.popularity = Math.min(1000, state.popularity + CATALOG[kind].rating);
   if (kind === 'plant') applyDecorationRating(state, decorationRating(CATALOG.plant.price));
   return { ok: true };
 }
