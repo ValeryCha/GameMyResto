@@ -1,10 +1,15 @@
 import { DISHES } from '../content/dishes';
+import { loyaltyItemById } from '../content/loyalty';
 import { chooseGuestAction } from './ai';
-import { isWalkable, samePoint } from './grid';
+import { findPath, isWalkable, samePoint } from './grid';
 import { moveActor } from './movement';
 import { nextRandom } from './random';
 import { findSeat, isSeatCurrent } from './seating';
-import { availableDishes, processProgression } from './progression';
+import { processProgression } from './progression';
+import { createGuestOrder, settleOrder } from './orders';
+import { createAppearance } from '../render3d/appearance';
+import { customerSpawnInterval, patienceMultiplier, targetGuestCount } from './guestFlow';
+import { cookingProgress, waiterMovementSteps } from './staff';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
 
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -14,10 +19,21 @@ function adjacentCells(state: GameState, item: Furniture): Point[] {
     .filter((point) => isWalkable(state, point));
 }
 
-function nearestCell(state: GameState, actor: { position: Point }, item: Furniture): Point | undefined {
-  return adjacentCells(state, item).sort((a, b) =>
-    Math.abs(a.x - actor.position.x) + Math.abs(a.y - actor.position.y) -
-    Math.abs(b.x - actor.position.x) - Math.abs(b.y - actor.position.y))[0];
+function occupiedCells(state: GameState, actor: { id?: string }): Point[] {
+  return [...state.employees, ...state.customers]
+    .filter((other) => other.id !== actor.id)
+    .map((other) => other.position);
+}
+
+function routeTo(state: GameState, actor: { id?: string; position: Point }, target: Point): Point[] {
+  return samePoint(actor.position, target) ? [] : findPath(state, actor.position, target, occupiedCells(state, actor));
+}
+
+function nearestCell(state: GameState, actor: { id?: string; position: Point }, item: Furniture): Point | undefined {
+  return adjacentCells(state, item)
+    .map((point) => ({ point, path: routeTo(state, actor, point) }))
+    .filter((candidate) => candidate.path.length > 0 || samePoint(actor.position, candidate.point))
+    .sort((a, b) => a.path.length - b.path.length)[0]?.point;
 }
 
 function entrance(state: GameState): Point {
@@ -31,7 +47,8 @@ function exitTarget(state: GameState, guest: Customer): Point {
 }
 
 function reserveSeat(state: GameState, guest: Customer): boolean {
-  const assignment = findSeat(state, guest);
+  const assignment = findSeat(state, guest, (chair) =>
+    samePoint(guest.position, chair.position) || findPath(state, guest.position, chair.position).length > 0);
   if (!assignment) return false;
   guest.seatId = assignment.chair.id;
   guest.target = { ...assignment.chair.position };
@@ -39,29 +56,62 @@ function reserveSeat(state: GameState, guest: Customer): boolean {
   return true;
 }
 
+function clearEntrance(state: GameState, guest: Customer): boolean {
+  const door = entrance(state);
+  if (!samePoint(guest.position, door)) return false;
+  const target = DIRECTIONS
+    .map((direction) => ({ x: door.x + direction.x, y: door.y + direction.y }))
+    .filter((point) => isWalkable(state, point) && !occupiedCells(state, guest).some((other) => samePoint(point, other)))
+    .map((point) => ({ point, path: routeTo(state, guest, point) }))
+    .filter((candidate) => candidate.path.length > 0)
+    .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+  if (!target) return true;
+  guest.state = 'entering';
+  guest.target = target;
+  if (moveActor(state, guest, target) === 'arrived') {
+    guest.state = 'seekingSeat';
+    guest.target = undefined;
+  }
+  return true;
+}
+
 function unhappyExit(state: GameState, guest: Customer): void {
   guest.state = 'leaving';
   guest.target = exitTarget(state, guest);
   guest.seatId = undefined;
+  if (guest.waitingForRecipe) return;
   state.popularity = Math.max(0, state.popularity - 1);
+  state.unhappyTotal += 1;
+  state.satisfiedStreak = 0;
 }
 
-function spawnCustomer(state: GameState): void {
+export function patienceBonus(state: GameState): number {
+  const owned = state.ownedLoyaltyItems ?? [];
+  const legacyPlants = owned.includes('plant') ? 0 : state.furniture.filter((item) => item.kind === 'plant').length;
+  const catalogBonus = owned.reduce((sum, id) => sum + (loyaltyItemById(id)?.bonus ?? 0), 0);
+  return Math.min(1, Math.min(0.5, legacyPlants * 0.1) + catalogBonus / 100);
+}
+
+function spawnCustomer(state: GameState): boolean {
   const position = entrance(state);
+  if ([...state.employees, ...state.customers].some((actor) => samePoint(actor.position, position))) return false;
+  const bonus = (1 + patienceBonus(state)) * patienceMultiplier(state);
   state.customers.push({
     id: `customer-${state.tick}`,
     position,
     state: 'seekingSeat',
-    patience: 300,
-    foodWait: 120,
+    patience: 240 * bonus,
+    foodWait: 120 * bonus,
+    ...createAppearance(() => nextRandom(state)),
   });
+  return true;
 }
 
 function updateCustomer(state: GameState, guest: Customer): void {
   if (guest.state === 'leaving') {
-    if (moveActor(state, guest, guest.target ?? entrance(state)) === 'arrived') {
+    if (moveActor(state, guest, guest.target ?? entrance(state), 2, true) === 'arrived') {
       state.customers = state.customers.filter((item) => item.id !== guest.id);
-      state.orders = state.orders.filter((order) => order.customerId !== guest.id || order.state === 'delivered');
+      state.orders = state.orders.filter((order) => order.customerId !== guest.id);
     }
     return;
   }
@@ -69,12 +119,8 @@ function updateCustomer(state: GameState, guest: Customer): void {
   if (guest.state === 'eating') {
     if (state.tick >= (guest.actionUntil ?? Infinity)) {
       const order = state.orders.find((item) => item.id === guest.orderId);
-      const dish = DISHES.find((item) => item.id === order?.dishId) ?? DISHES[0];
-      state.coins += dish.price;
-      state.experience += 10;
-      state.servedTotal += 1;
-      state.popularity = Math.min(100, state.popularity + 0.1);
-      guest.state = 'leaving';
+      if (order) settleOrder(state, guest, order);
+      else guest.state = 'leaving';
       guest.target = exitTarget(state, guest);
       guest.seatId = undefined;
     }
@@ -101,13 +147,13 @@ function updateCustomer(state: GameState, guest: Customer): void {
   if (guest.state === 'ordering') {
     const action = chooseGuestAction(state, guest);
     if (action === 'order') {
-      const orderId = `order-${guest.id}`;
-      const dishes = availableDishes(state);
-      const dish = dishes[Math.floor(nextRandom(state) * dishes.length)];
-      guest.orderId = orderId;
-      guest.state = 'waitingFood';
-      guest.foodWait = 120;
-      state.orders.push({ id: orderId, customerId: guest.id, state: 'waitingCook', progress: 0, dishId: dish.id });
+      const order = createGuestOrder(state, guest);
+      if (order) guest.foodWait = 120 * (1 + patienceBonus(state)) * patienceMultiplier(state);
+      else if (!guest.waitingForRecipe) {
+        guest.state = 'leaving';
+        guest.target = exitTarget(state, guest);
+        guest.seatId = undefined;
+      }
     }
     return;
   }
@@ -118,15 +164,21 @@ function updateCustomer(state: GameState, guest: Customer): void {
     guest.target = undefined;
     guest.state = 'seekingSeat';
   }
-  if (guest.state === 'seekingSeat' && !guest.seatId && guest.patience === 299 && !findSeat(state, guest)) return;
+  if (guest.waitingForRecipe && guest.desiredDishId && state.unlockedDishIds.includes(guest.desiredDishId)) {
+    guest.waitingForRecipe = false;
+    guest.state = 'seekingSeat';
+    guest.target = undefined;
+    guest.actionUntil = undefined;
+  }
+  if (!guest.seatId && !guest.waitingForRecipe && reserveSeat(state, guest)) {
+    guest.actionUntil = undefined;
+  } else if (!guest.seatId && !guest.waitingForRecipe && clearEntrance(state, guest)) {
+    return;
+  }
   const action = chooseGuestAction(state, guest);
   if (action === 'leave') {
     unhappyExit(state, guest);
     return;
-  }
-
-  if (action === 'seat' && guest.state !== 'wandering' && guest.state !== 'inspecting' && !guest.seatId) {
-    if (!reserveSeat(state, guest)) return;
   }
 
   if (guest.state === 'seekingSeat' && guest.target) {
@@ -134,6 +186,12 @@ function updateCustomer(state: GameState, guest: Customer): void {
     if (movement === 'arrived') {
       guest.state = 'seated';
       guest.target = undefined;
+    } else if (movement === 'blocked') {
+      const occupied = occupiedCells(state, guest);
+      const yieldTarget = DIRECTIONS
+        .map((direction) => ({ x: guest.position.x + direction.x, y: guest.position.y + direction.y }))
+        .find((point) => isWalkable(state, point) && !occupied.some((other) => samePoint(point, other)));
+      if (yieldTarget) moveActor(state, guest, yieldTarget, 1);
     }
     return;
   }
@@ -180,7 +238,7 @@ function updateChef(state: GameState, chef: Employee): void {
   if (!target) return;
   if (moveActor(state, chef, target) !== 'arrived') return;
   if (order.state === 'waitingCook') order.state = 'cooking';
-  order.progress += 1;
+  order.progress += cookingProgress(state.upgrades.cooking);
   const dish = DISHES.find((item) => item.id === order!.dishId) ?? DISHES[0];
   if (order.progress >= dish.cookSeconds && state.furniture.some((item) => item.kind === 'counter')) {
     order.state = 'waitingDelivery';
@@ -188,49 +246,91 @@ function updateChef(state: GameState, chef: Employee): void {
   }
 }
 
+function parkIdleWaiter(state: GameState, waiter: Employee): void {
+  const kitchen = state.furniture.filter((item) => item.kind === 'stove' || item.kind === 'counter');
+  const nearKitchen = kitchen.some((item) => Math.abs(item.position.x - waiter.position.x) + Math.abs(item.position.y - waiter.position.y) <= 2);
+  if (!nearKitchen) return;
+  const occupied = occupiedCells(state, waiter);
+  const target = Array.from({ length: state.height }, (_, y) =>
+    Array.from({ length: state.width }, (_, x) => ({ x, y }))).flat()
+    .filter((point) => isWalkable(state, point) &&
+      !state.furniture.some((item) => samePoint(item.position, point)) &&
+      !occupied.some((other) => samePoint(point, other)) &&
+      kitchen.every((item) => Math.abs(item.position.x - point.x) + Math.abs(item.position.y - point.y) > 2) &&
+      Math.abs(entrance(state).x - point.x) + Math.abs(entrance(state).y - point.y) > 1)
+    .map((point) => ({ point, path: routeTo(state, waiter, point) }))
+    .filter((candidate) => candidate.path.length > 0)
+    .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+  if (target) moveActor(state, waiter, target, waiterMovementSteps(waiter, state.upgrades.waiter));
+}
+
 function updateWaiter(state: GameState, waiter: Employee): void {
   let order = orderFor(state, waiter);
+  let guest = order ? state.customers.find((item) => item.id === order!.customerId) : undefined;
+  if (order?.state === 'waitingDelivery' && (!guest || guest.state === 'leaving')) {
+    order.assignedTo = undefined;
+    order.pickedUp = false;
+    waiter.taskId = undefined;
+    order = undefined;
+  }
   if (!order || order.state === 'delivered') {
     waiter.taskId = undefined;
     order = state.orders.find((item) => item.state === 'waitingDelivery' &&
+      state.customers.some((customer) => customer.id === item.customerId && customer.state !== 'leaving') &&
       !state.employees.some((employee) => employee.id !== waiter.id && employee.taskId === item.id));
-    if (!order) return;
+    if (!order) {
+      parkIdleWaiter(state, waiter);
+      return;
+    }
     waiter.taskId = order.id;
     order.assignedTo = waiter.id;
+    guest = state.customers.find((item) => item.id === order!.customerId);
   }
-  const counter = state.furniture.find((item) => item.kind === 'counter');
-  const guest = state.customers.find((item) => item.id === order!.customerId);
-  if (!counter || !guest || guest.state === 'leaving') return;
+  const counters = state.furniture.filter((item) => item.kind === 'counter');
+  const waiterIndex = state.employees.filter((employee) => employee.role === 'waiter').findIndex((employee) => employee.id === waiter.id);
+  const counter = counters[waiterIndex % counters.length];
+  if (!counter || !guest) return;
   const pickup = nearestCell(state, waiter, counter);
   if (!pickup) return;
   const atCounter = Math.abs(waiter.position.x - counter.position.x) + Math.abs(waiter.position.y - counter.position.y) === 1;
+  const steps = waiterMovementSteps(waiter, state.upgrades.waiter);
   if (!order.pickedUp) {
     if (!atCounter) {
-      moveActor(state, waiter, pickup);
+      moveActor(state, waiter, pickup, steps);
       return;
     }
     order.pickedUp = true;
   }
   const chair = state.furniture.find((item) => item.id === guest.seatId);
   const target = chair
-    ? adjacentCells(state, chair).filter((point) => !samePoint(point, guest.position) &&
-      ![...state.employees, ...state.customers].some((other) => other.id !== waiter.id && samePoint(other.position, point)))
-      .sort((a, b) => Math.abs(a.x - waiter.position.x) + Math.abs(a.y - waiter.position.y) - Math.abs(b.x - waiter.position.x) - Math.abs(b.y - waiter.position.y))[0]
+    ? adjacentCells(state, chair)
+      .filter((point) => !samePoint(point, guest!.position))
+      .map((point) => ({ point, path: routeTo(state, waiter, point) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(waiter.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point
     : nearestCell(state, waiter, { id: guest.id, kind: 'plant', position: guest.position, rotation: 0 });
-  if (target && moveActor(state, waiter, target) === 'arrived') {
+  if (target && moveActor(state, waiter, target, steps) === 'arrived') {
     order.state = 'delivered';
     waiter.taskId = undefined;
   }
 }
 
-export const customerSpawnInterval = (state: GameState): number =>
-  Math.max(8, Math.round(32 - 0.24 * state.popularity));
+export { customerSpawnInterval } from './guestFlow';
 
 export function advanceSimulation(state: GameState, steps = 1): void {
   for (let i = 0; i < steps; i += 1) {
     state.tick += 1;
+    state.spawnProgress += 1;
     const interval = customerSpawnInterval(state);
-    if ((state.tick === 1 || state.tick % interval === 1) && state.customers.length < state.guestLimit) spawnCustomer(state);
+    if (state.tick === 1) {
+      spawnCustomer(state);
+    } else if (state.spawnProgress >= interval) {
+      if (state.customers.length < targetGuestCount(state)) {
+        if (spawnCustomer(state)) state.spawnProgress -= interval;
+      } else {
+        state.spawnProgress = interval;
+      }
+    }
     for (const employee of state.employees) employee.energy = Math.max(0, employee.energy - 0.002);
     for (const guest of [...state.customers]) updateCustomer(state, guest);
     const chef = state.employees.find((employee) => employee.role === 'chef');

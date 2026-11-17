@@ -15,8 +15,11 @@ export function moveToward(state: GameState, actor: { id?: string; position: Poi
   return samePoint(actor.position, target) ? 'arrived' : 'moving';
 }
 
-export function moveActor(state: GameState, actor: { id?: string; position: Point }, target: Point): MoveResult {
-  const first = moveToward(state, actor, target);
-  if (first !== 'moving') return first;
-  return moveToward(state, actor, target);
+export function moveActor(state: GameState, actor: { id?: string; position: Point }, target: Point, steps = 2, allowFurnitureTarget = false): MoveResult {
+  let result: MoveResult = 'arrived';
+  for (let step = 0; step < steps; step += 1) {
+    result = moveToward(state, actor, target, allowFurnitureTarget);
+    if (result !== 'moving') break;
+  }
+  return result;
 }

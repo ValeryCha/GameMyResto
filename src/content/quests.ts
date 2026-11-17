@@ -1,22 +1,49 @@
 import type { GameState } from '../simulation/types';
+import type { IconName } from '../ui/icons';
 
 export interface Quest {
+  id: string;
   level: number;
   title: string;
   description: string;
+  icon: IconName;
+  reward: { coins: number; experience: number };
   test(state: GameState): boolean;
   unlockDishId?: string;
 }
 
+export const STARTER_QUEST_IDS = ['quest-hire-waiter', 'quest-buy-counter'] as const;
+const reward = (level: number) => ({ coins: 60 * level * level, experience: 0 });
+const count = (state: GameState, kind: string) => state.furniture.filter((item) => item.kind === kind).length;
+const tables = (state: GameState) => state.furniture.filter((item) => item.kind === 'table' || item.kind === 'tableDouble').length;
+const waiters = (state: GameState) => state.employees.filter((item) => item.role === 'waiter').length;
+
+const mainQuest = (
+  level: number,
+  title: string,
+  description: string,
+  test: (state: GameState) => boolean,
+): Quest => ({ id: `quest-${level}`, level, title, description, icon: 'progress', reward: reward(level), test });
+
 export const QUESTS: Quest[] = [
-  { level: 1, title: 'Первый гость', description: 'Обслужите первого гостя', test: (s) => s.servedTotal >= 1 },
-  { level: 2, title: 'Новый рецепт', description: 'Обслужите ещё двух гостей', test: (s) => s.servedTotal >= 3, unlockDishId: 'pasta' },
-  { level: 3, title: 'Больше мест', description: 'Установите минимум 3 стула', test: (s) => s.furniture.filter((item) => item.kind === 'chair').length >= 3 },
-  { level: 4, title: 'Узнаваемый ресторан', description: 'Достигните рейтинга 20', test: (s) => s.popularity >= 20, unlockDishId: 'salad' },
-  { level: 5, title: 'Больше столиков', description: 'Установите минимум 3 стола', test: (s) => s.furniture.filter((item) => item.kind === 'table' || item.kind === 'tableDouble').length >= 3 },
-  { level: 6, title: 'Большой стол', description: 'Установите стол 2×1', test: (s) => s.furniture.some((item) => item.kind === 'tableDouble'), unlockDishId: 'cutlet' },
-  { level: 7, title: 'Напряжённый день', description: 'Обслужите всего 15 гостей', test: (s) => s.servedTotal >= 15 },
-  { level: 8, title: 'Сильная команда', description: 'Наймите минимум 2 официантов', test: (s) => s.employees.filter((item) => item.role === 'waiter').length >= 2, unlockDishId: 'fish' },
-  { level: 9, title: 'Больше гостей', description: 'Увеличьте лимит гостей до 8', test: (s) => s.guestLimit >= 8 },
-  { level: 10, title: 'Большой ресторан', description: 'Оплатите расширение +2×2', test: (s) => s.paidExpansions >= 1, unlockDishId: 'signature' },
+  {
+    id: 'quest-hire-waiter', level: 1,
+    title: 'Купить официанта', description: 'Наймите первого официанта', icon: 'waiter',
+    reward: { coins: 100, experience: 20 },
+    test: (state) => waiters(state) >= 1,
+  },
+  {
+    id: 'quest-buy-counter', level: 1,
+    title: 'Купить стойку выдачи заказов', description: 'Установите стойку выдачи заказов', icon: 'counter',
+    reward: { coins: 200, experience: 30 },
+    test: (state) => count(state, 'counter') >= 1,
+  },
+  mainQuest(1, 'Первый гость', 'Обслужите первого гостя', (state) => state.servedTotal >= 1),
+  mainQuest(5, 'Больше столиков', 'Установите минимум 3 стола', (state) => tables(state) >= 3),
+  mainQuest(10, 'Сильная команда', 'Наймите минимум 2 официантов', (state) => waiters(state) >= 2),
+  mainQuest(15, 'Разнообразное меню', 'Купите не менее 6 рецептов', (state) => state.unlockedDishIds.length >= 6),
+  mainQuest(20, 'Первая выручка', 'Заработайте 2500 монет с блюд', (state) => state.revenueTotal >= 2500),
+  mainQuest(25, 'Резерв мест', 'Купите не менее 3 слотов', (state) => state.purchasedGuestSlots >= 3),
+  mainQuest(30, 'Новые залы', 'Оплатите второе расширение', (state) => state.paidExpansions >= 2),
+  mainQuest(33, 'Легенда города', 'Рейтинг 85 и 250 обслуженных гостей', (state) => state.popularity >= 85 && state.servedTotal >= 250),
 ];

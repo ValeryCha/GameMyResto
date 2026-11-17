@@ -1,22 +1,10 @@
-.editor-panel {
-  position: fixed;
-  z-index: 5;
-  right: 18px;
-  bottom: 74px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  gap: 9px;
-  width: min(360px, calc(100vw - 36px));
-  padding: 14px;
-  border: 2px solid #80563b;
-  border-radius: 14px;
-  background: #fff7e8f5;
-  color: #3d2d24;
-}
-.editor-panel strong, .editor-panel span { grid-column: 1 / -1; }
-.editor-panel button { padding: 10px; border: 1px solid #49703b; border-radius: 8px; background: #56824a; color: white; font-weight: 650; }
-.editor-panel button:disabled { opacity: 0.45; }
-.editor-panel button:last-child { grid-column: 1 / -1; background: #80563b; }
-@media (max-width: 600px) {
-  .editor-panel { right: 12px; bottom: 66px; left: 12px; width: auto; }
-}
+.editor-panel { position: fixed; z-index: 5; right: 18px; bottom: 104px; display: grid; grid-template-columns: repeat(4, 54px); justify-content: center; gap: 10px; width: min(340px, calc(100vw - 36px)); padding: 15px; border: 3px solid #607e82; border-radius: 24px; background: linear-gradient(#fffdf5, #e3ede6); box-shadow: 0 6px 0 #46666c66, 0 14px 30px #27434a33; color: #29474e; }
+.editor-panel strong, .editor-panel span:not(.sr-only) { grid-column: 1 / -1; text-align: center; }
+.editor-panel button { display: flex; align-items: center; justify-content: center; width: 54px; height: 54px; padding: 0; overflow: hidden; border: 2px solid #47777b; border-radius: 50%; background: linear-gradient(#62ccd0, #329da5); box-shadow: 0 4px 0 #3e686d; color: white; text-align: center; cursor: pointer; transition: transform 140ms, filter 140ms; }
+.editor-panel button svg { width: 27px; height: 27px; }
+.editor-panel button:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-3px) scale(1.05); }
+.editor-panel button:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1px 0 #3e686d; }
+.editor-panel button:disabled { opacity: .35; cursor: default; }
+.editor-panel button:last-child { background: linear-gradient(#a9b9b4, #7b938e); }
+@media (max-width: 600px) { .editor-panel { right: 12px; bottom: 86px; left: 12px; width: auto; } }
+@media (prefers-reduced-motion: reduce) { .editor-panel button { transition: none; } }

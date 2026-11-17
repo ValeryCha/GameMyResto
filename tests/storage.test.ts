@@ -44,7 +44,35 @@ describe('локальные сохранения', () => {
     expect(normalized.coins).toBe(777);
     expect(normalized.guestLimit).toBe(7);
     expect(normalized.randomSeed).toBe(123456789);
+    expect(normalized.upgrades).toEqual({ cooking: 0, waiter: 0 });
+    expect(normalized.lastDailyReward).toBe('');
     expect(normalized.version).toBe(1);
+  });
+
+  it('не выдаёт стартовые награды повторно в сохранении выше первого уровня', () => {
+    const legacy = createGame();
+    legacy.level = 3;
+    legacy.experience = 300;
+    legacy.coins = 777;
+    normalizeState(legacy);
+    expect(legacy.completedQuestIds).toEqual(
+      expect.arrayContaining(['quest-hire-waiter', 'quest-buy-counter']),
+    );
+    expect(legacy.coins).toBe(777);
+    expect(legacy.experience).toBe(300);
+  });
+
+  it('удаляет из старого сохранения завершённые заказы уже отсутствующих гостей', () => {
+    const legacy = createGame();
+    legacy.customers.push({ id: 'active', position: { x: 5, y: 5 }, state: 'eating', patience: 100, orderId: 'active-order' });
+    legacy.orders.push(
+      { id: 'orphan', customerId: 'gone', state: 'delivered', progress: 6, dishId: 'soup' },
+      { id: 'active-order', customerId: 'active', state: 'delivered', progress: 6, dishId: 'soup' },
+    );
+
+    normalizeState(legacy);
+
+    expect(legacy.orders.map((order) => order.id)).toEqual(['active-order']);
   });
 
   it('полностью очищает основной и резервный прогресс', () => {

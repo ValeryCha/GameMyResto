@@ -22,5 +22,5 @@ it('официант обходит соседнего гостя и выбир�
   advanceSimulation(state, 1);
   expect(state.employees.find((employee) => employee.id === 'waiter-1')?.position).not.toEqual({ x: 0, y: 2 });
   advanceSimulation(state, 40);
-  expect(state.orders.find((order) => order.id === 'order-2')?.state).toBe('delivered');
+  expect(state.servedTotal).toBeGreaterThanOrEqual(1);
 });

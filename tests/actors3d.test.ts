@@ -16,6 +16,21 @@ describe('анимация персонажей', () => {
     expect(Math.abs(leftArm.rotation.x)).toBeLessThan(0.4);
   });
 
+  it('пульсирует кольцом только при низком терпении и сбрасывает масштаб', () => {
+    const model = createActorMesh({ id: 'guest', position: { x: 0, y: 0 }, state: 'waitingFood', patience: 120 });
+    updateActorVisual(model, { moving: false, time: Math.PI / 12, delta: 0.016, patience: 0.2 });
+    expect(model.userData.patienceRing.scale.x).toBeCloseTo(1.08);
+    expect(model.userData.patienceRing.renderOrder).toBeGreaterThan(0);
+    expect(model.userData.patienceRing.material.depthTest).toBe(false);
+    expect(model.userData.patienceAlert.visible).toBe(true);
+    updateActorVisual(model, { moving: false, time: 2, delta: 0.016, patience: 0.5 });
+    expect(model.userData.patienceRing.scale.x).toBe(1);
+    expect(model.userData.patienceAlert.visible).toBe(false);
+    updateActorVisual(model, { moving: false, time: 3, delta: 0.016 });
+    expect(model.userData.patienceRing.scale.x).toBe(1);
+    expect(model.userData.patienceAlert.visible).toBe(false);
+  });
+
   it('показывает посадку сгибанием ног без полосы над головой', () => {
     const model = createActorMesh({ id: 'guest', position: { x: 0, y: 0 }, state: 'seated', patience: 300 });
     updateActorVisual(model, { moving: false, seated: true, time: 1, delta: 1 });

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 const cache = new Map<number, THREE.MeshStandardMaterial>();
+const geometries = new Map<string, THREE.BufferGeometry>();
 
 export function material(color: number): THREE.MeshStandardMaterial {
   let value = cache.get(color);
@@ -11,13 +12,23 @@ export function material(color: number): THREE.MeshStandardMaterial {
   return value;
 }
 
+function cachedGeometry(key: string, create: () => THREE.BufferGeometry): THREE.BufferGeometry {
+  let geometry = geometries.get(key);
+  if (!geometry) {
+    geometry = create();
+    geometries.set(key, geometry);
+  }
+  return geometry;
+}
+
 export function box(
   group: THREE.Group,
   size: [number, number, number],
   position: [number, number, number],
   color: number,
 ): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material(color));
+  const geometry = cachedGeometry(`box:${size.join(':')}`, () => new THREE.BoxGeometry(...size));
+  const mesh = new THREE.Mesh(geometry, material(color));
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -33,7 +44,8 @@ export function cylinder(
   color: number,
   topRadius = radius,
 ): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, radius, height, 16), material(color));
+  const geometry = cachedGeometry(`cylinder:${topRadius}:${radius}:${height}`, () => new THREE.CylinderGeometry(topRadius, radius, height, 10));
+  const mesh = new THREE.Mesh(geometry, material(color));
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -48,7 +60,8 @@ export function sphere(
   color: number,
   scale: [number, number, number] = [1, 1, 1],
 ): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 16, 12), material(color));
+  const geometry = cachedGeometry(`sphere:${radius}`, () => new THREE.SphereGeometry(radius, 10, 8));
+  const mesh = new THREE.Mesh(geometry, material(color));
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.castShadow = true;

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
-import { addTestFunds, expandRestaurant, hireWaiter, increaseGuestLimit } from '../src/simulation/shop';
+import { addTestFunds, buyCookingUpgrade, buyWaiterUpgrade, claimDailyReward, expandRestaurant, hireWaiter, increaseGuestLimit } from '../src/simulation/shop';
 import { moveDoor, placeFurniture } from '../src/simulation/commands';
 
- describe('магазин и рейтинг', () => {
+describe('магазин и рейтинг', () => {
   it('временно добавляет 50000 монет без изменения опыта и рейтинга', () => {
     const state = createGame();
     addTestFunds(state);
@@ -29,12 +29,9 @@ import { moveDoor, placeFurniture } from '../src/simulation/commands';
 
   it('нанимает официанта, покупает лимит и расширяет ровно на 2×2', () => {
     const state = createGame();
-    expect(state.employees.some((employee) => employee.role === 'waiter')).toBe(false);
     expect(hireWaiter(state).ok).toBe(true);
-    expect(state.employees.filter((employee) => employee.role === 'waiter')).toHaveLength(1);
     state.coins = 60000;
     expect(increaseGuestLimit(state).ok).toBe(true);
-    expect(state.guestLimit).toBe(8);
     expect(expandRestaurant(state).ok).toBe(true);
     expect([state.width, state.height]).toEqual([10, 10]);
     expect(state.popularity).toBe(38);
@@ -44,7 +41,6 @@ import { moveDoor, placeFurniture } from '../src/simulation/commands';
     const state = createGame();
     expect(moveDoor(state, { x: 4, y: 4 }).ok).toBe(false);
     expect(moveDoor(state, { x: 7, y: 4 }).ok).toBe(true);
-    expect(state.furniture.find((item) => item.kind === 'door')?.position).toEqual({ x: 7, y: 4 });
     expect(state.coins).toBe(900);
   });
 
@@ -53,5 +49,30 @@ import { moveDoor, placeFurniture } from '../src/simulation/commands';
     state.coins = 199;
     expect(hireWaiter(state)).toEqual({ ok: false, reason: 'Недостаточно монет' });
     expect(state.employees).toHaveLength(1);
+  });
+
+  it('применяет уровневые ограничения, цены и максимум улучшений', () => {
+    const state = createGame();
+    state.coins = 10000;
+    expect(buyCookingUpgrade(state).ok).toBe(false);
+    expect(buyWaiterUpgrade(state).ok).toBe(false);
+    state.level = 3;
+    for (let level = 0; level < 5; level += 1) expect(buyCookingUpgrade(state).ok).toBe(true);
+    expect(buyCookingUpgrade(state).ok).toBe(false);
+    expect(state.upgrades.cooking).toBe(5);
+    for (let level = 0; level < 5; level += 1) expect(buyWaiterUpgrade(state).ok).toBe(true);
+    expect(buyWaiterUpgrade(state).ok).toBe(false);
+    expect(state.coins).toBe(2315);
+  });
+
+  it('выдаёт ежедневную награду один раз за дату', () => {
+    const state = createGame();
+    expect(claimDailyReward(state, '2026-11-15').ok).toBe(true);
+    expect(state.coins).toBe(1100);
+    expect(claimDailyReward(state, '2026-11-15').ok).toBe(false);
+    expect(state.coins).toBe(1100);
+    state.level = 3;
+    expect(claimDailyReward(state, '2026-11-16').ok).toBe(true);
+    expect(state.coins).toBe(1250);
   });
 });

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('покупка растения, возврат в меню, продолжение и новая игра', async ({ page }) => {
+test('покупка лояльности, возврат в меню, продолжение и новая игра', async ({ page }) => {
   test.setTimeout(60_000);
   const errors: string[] = [];
   page.on('console', (message) => {
@@ -18,8 +18,6 @@ test('покупка растения, возврат в меню, продол�
   await expect(hud).toContainText('Монеты: 1000');
   await expect(hud).toContainText('Гости: 1');
   await page.screenshot({ path: 'artifacts/restaurant-3d-initial.png' });
-  await page.getByRole('button', { name: 'Отдалить камеру' }).click();
-  await page.getByRole('button', { name: 'Приблизить камеру' }).click();
   await page.getByTestId('restaurant-canvas').locator('canvas').hover();
   await page.mouse.wheel(0, 120);
   await page.mouse.move(800, 550);
@@ -31,21 +29,20 @@ test('покупка растения, возврат в меню, продол�
   await page.getByRole('button', { name: 'Сбросить вид' }).click();
 
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
-  await page.getByRole('button', { name: 'Растение — 50 монет' }).click();
-  await expect(page.getByText(/Выберите клетку/)).toBeVisible();
-  await page.getByTestId('restaurant-canvas').locator('canvas').click({ position: { x: 685, y: 354 } });
-  await expect(page.getByText(/Выберите клетку/)).toBeHidden();
-  await expect(hud).toContainText('Монеты: 950');
-  await page.screenshot({ path: 'artifacts/restaurant-3d-planted.png' });
+  await page.locator('[data-shop-category="loyalty"]').click();
+  await page.getByRole('button', { name: 'Мятный приём — 200 монет' }).click();
+  await expect(hud).toContainText('Монеты: 800');
+  await page.screenshot({ path: 'artifacts/restaurant-3d-loyalty.png' });
+  await page.getByRole('complementary', { name: 'Магазин ресторана' }).getByRole('button', { name: 'Закрыть' }).click();
 
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
-  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 950 монет');
+  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 800 монет');
   await page.getByRole('button', { name: 'Играть' }).click();
-  await expect(hud).toContainText('Монеты: 950');
+  await expect(hud).toContainText('Монеты: 800');
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
   await page.getByRole('button', { name: 'Новая игра' }).click();
   await page.getByRole('button', { name: 'Отмена' }).click();
-  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 950 монет');
+  await expect(page.getByTestId('menu-balance')).toHaveText('Текущий баланс: 800 монет');
   await page.getByRole('button', { name: 'Новая игра' }).click();
   await page.getByRole('button', { name: 'Начать заново' }).click();
   await expect(hud).toContainText('Монеты: 1000');
@@ -58,10 +55,11 @@ test('покупка растения, возврат в меню, продол�
   const shopButton = page.getByRole('button', { name: 'Магазин', exact: true });
   await expect(shopButton).toBeVisible();
   await shopButton.click();
-  const plantButton = page.getByRole('button', { name: 'Растение — 50 монет' });
-  await expect(plantButton).toBeVisible();
+  await page.locator('[data-shop-category="loyalty"]').click();
+  const loyaltyButton = page.getByRole('button', { name: 'Мятный приём — 200 монет' });
+  await expect(loyaltyButton).toBeVisible();
   await expect(page.getByTestId('restaurant-canvas').locator('canvas')).toBeVisible();
-  const buttonBounds = await plantButton.boundingBox();
+  const buttonBounds = await loyaltyButton.boundingBox();
   const hudBounds = await hud.boundingBox();
   expect(buttonBounds!.x).toBeGreaterThanOrEqual(0);
   expect(buttonBounds!.x + buttonBounds!.width).toBeLessThanOrEqual(390);

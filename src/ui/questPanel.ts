@@ -2,8 +2,9 @@ import './questPanel.css';
 import { QUESTS } from '../content/quests';
 import { experienceThreshold } from '../simulation/progression';
 import type { GameState } from '../simulation/types';
+import { createIcon, setButtonIcon, type IconName } from './icons';
 
-export function createQuestPanel() {
+export function createQuestPanel(onClose?: () => void) {
   const root = document.createElement('aside');
   root.className = 'quest-panel';
   root.hidden = true;
@@ -13,8 +14,8 @@ export function createQuestPanel() {
   const title = document.createElement('strong');
   title.textContent = 'Прогресс';
   const closeButton = document.createElement('button');
-  closeButton.textContent = 'Закрыть';
-  closeButton.addEventListener('click', () => close());
+  setButtonIcon(closeButton, 'Закрыть', 'close');
+  closeButton.addEventListener('click', () => { close(); onClose?.(); });
   header.append(title, closeButton);
   const level = document.createElement('h2');
   const experience = document.createElement('span');
@@ -23,23 +24,29 @@ export function createQuestPanel() {
   const levelBlock = document.createElement('section');
   levelBlock.className = 'level-progress';
   levelBlock.append(level, experience, bar);
+  const rating = document.createElement('section');
+  rating.className = 'rating-breakdown';
+  rating.setAttribute('aria-label', 'Детализация рейтинга');
   const list = document.createElement('div');
   list.className = 'quest-list';
-  const rows = QUESTS.map((quest) => {
+  const rows = QUESTS.map((quest, index) => {
     const item = document.createElement('article');
     item.className = 'quest-item';
     const name = document.createElement('strong');
-    name.textContent = `${quest.level}. ${quest.title}`;
+    name.className = 'quest-title';
+    name.append(createIcon(quest.icon), document.createTextNode(`${index + 1}. ${quest.title}`));
     const description = document.createElement('span');
     description.textContent = quest.description;
     const reward = document.createElement('small');
-    reward.textContent = `Награда: ${30 * quest.level} опыта · ${100 * quest.level * quest.level} монет`;
+    reward.textContent = quest.reward.experience
+      ? `Награда: ${quest.reward.experience} опыта · ${quest.reward.coins} монет`
+      : `Награда: ${quest.reward.coins} монет`;
     const status = document.createElement('small');
     item.append(name, description, reward, status);
     list.append(item);
-    return { item, status, id: `quest-${quest.level}`, quest };
+    return { item, status, id: quest.id, quest };
   });
-  root.append(header, levelBlock, list);
+  root.append(header, levelBlock, rating, list);
   const toast = document.createElement('div');
   toast.className = 'quest-toast';
   toast.hidden = true;
@@ -65,14 +72,22 @@ export function createQuestPanel() {
   const close = () => root.classList.remove('is-open');
   return {
     update(state: GameState) {
-      const threshold = state.level >= 30 ? state.experience : experienceThreshold(state.level);
-      level.textContent = state.level >= 30 ? 'Уровень 30 — максимум' : `Уровень ${state.level}`;
-      experience.textContent = state.level >= 30 ? 'Все расширения за уровни получены' : `${state.experience} / ${threshold} опыта`;
+      const atMaxLevel = state.level >= 33;
+      const threshold = atMaxLevel ? state.experience : experienceThreshold(state.level);
+      level.textContent = atMaxLevel ? 'Уровень 33 — максимум' : `Уровень ${state.level}`;
+      experience.textContent = atMaxLevel ? 'Все расширения за уровни получены' : `${state.experience} / ${threshold} опыта`;
       bar.max = Math.max(threshold, 1);
       bar.value = Math.min(state.experience, bar.max);
+      rating.replaceChildren();
+      const ratingTitle = document.createElement('strong');
+      ratingTitle.append(createIcon('rating'), document.createTextNode(`Рейтинг: ${state.popularity.toFixed(1)}`));
+      const details = document.createElement('span');
+      details.textContent = `Декорации: +${state.decorationRatingBonus} · Обслуживание: ${(state.popularity - state.decorationRatingBonus).toFixed(1)}`;
+      rating.append(ratingTitle, details);
+      const activeQuest = QUESTS.find((quest) => quest.level === state.level && !state.completedQuestIds.includes(quest.id));
       for (const row of rows) {
         const completed = state.completedQuestIds.includes(row.id);
-        const active = !completed && row.quest.level === state.level;
+        const active = row.quest === activeQuest;
         row.item.classList.toggle('is-complete', completed);
         row.item.classList.toggle('is-active', active);
         row.status.textContent = completed ? 'Выполнено' : active ? 'Активно' : `Откроется на уровне ${row.quest.level}`;
@@ -85,11 +100,11 @@ export function createQuestPanel() {
       }
       for (const id of state.completedQuestIds) {
         if (knownCompleted.has(id)) continue;
-        const quest = QUESTS.find((item) => `quest-${item.level}` === id);
-        if (quest) queue.push(`Задание выполнено: ${quest.title}. +${30 * quest.level} опыта, +${100 * quest.level * quest.level} монет`);
+        const quest = QUESTS.find((item) => item.id === id);
+        if (quest) queue.push(`Задание выполнено: ${quest.title}. ${quest.reward.experience ? `+${quest.reward.experience} опыта, ` : ''}+${quest.reward.coins} монет`);
       }
       if (state.level > knownLevel) {
-        for (let next = knownLevel + 1; next <= state.level; next++) queue.push(`Уровень ${next}! Бонус: расширение 2×2`);
+        for (let next = knownLevel + 1; next <= state.level; next++) queue.push(`Уровень ${next}!${next % 5 === 0 ? ' Бонус: расширение 2×2' : ''}`);
       }
       knownCompleted = new Set(state.completedQuestIds);
       knownLevel = state.level;

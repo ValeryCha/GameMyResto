@@ -15,10 +15,11 @@ function tableForChair(state: GameState, chair: Furniture): Furniture | undefine
     furnitureCells(item).some((cell) => adjacent(cell, chair.position)));
 }
 
-export function findSeat(state: GameState, guest: Customer): SeatAssignment | undefined {
+export function findSeat(state: GameState, guest: Customer, canReserve?: (chair: Furniture) => boolean): SeatAssignment | undefined {
   for (const chair of state.furniture) {
     if (chair.kind !== 'chair') continue;
     if (state.customers.some((other) => other.id !== guest.id && other.seatId === chair.id)) continue;
+    if (canReserve && !canReserve(chair)) continue;
     const table = tableForChair(state, chair);
     if (table) return { chair, table };
   }

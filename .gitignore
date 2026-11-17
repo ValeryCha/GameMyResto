@@ -4,3 +4,13 @@ test-results/
 playwright-report/
 artifacts/
 .worktrees/
+
+# Personal/local files (not for GitHub)
+diagnostics/
+prompts/
+references/
+senior-game-dev-*.txt
+role-*.txt
+*.cmd
+docs/prompt-logic-*.txt
+docs/project-context-for-deepseek.md

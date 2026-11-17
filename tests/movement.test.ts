@@ -46,6 +46,13 @@ describe('безопасное перемещение', () => {
     expect(actor.position).toEqual({ x: 2, y: 4 });
   });
 
+  it('поддерживает дополнительный шаг после тренировки', () => {
+    const state = createGame();
+    const actor = state.employees[0];
+    expect(moveActor(state, actor, { x: 2, y: 5 }, 3)).toBe('arrived');
+    expect(actor.position).toEqual({ x: 2, y: 5 });
+  });
+
   it('сообщает о прибытии без изменения позиции', () => {
     const state = createGame();
     const actor = state.employees[0];

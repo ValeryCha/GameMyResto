@@ -23,11 +23,10 @@ test('редактор перемещает, вращает и удаляет м
   await expect(page.getByRole('button', { name: 'Переместить', exact: true })).toBeVisible();
   await expect(hud).toContainText('Монеты: 1000');
   await page.getByRole('button', { name: 'Повернуть', exact: true }).click();
-  page.once('dialog', (dialog) => {
-    expect(dialog.message()).toContain('вернуть 37 монет');
-    void dialog.accept();
-  });
-  await page.getByRole('button', { name: 'Удалить', exact: true }).click();
+  let dialogs = 0;
+  page.on('dialog', (dialog) => { dialogs += 1; void dialog.dismiss(); });
+  await page.getByRole('button', { name: 'Продать · 50%', exact: true }).click();
+  expect(dialogs).toBe(0);
   await expect(hud).toContainText('Монеты: 1037');
   await page.screenshot({ path: 'artifacts/restaurant-editor.png' });
   await page.getByRole('button', { name: 'Вернуться в игру' }).click();

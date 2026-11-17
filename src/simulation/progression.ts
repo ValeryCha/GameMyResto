@@ -2,8 +2,9 @@ import { DISHES } from '../content/dishes';
 import { QUESTS } from '../content/quests';
 import type { GameState } from './types';
 import { expandBounds } from './expansion';
+import { MAX_LEVEL, recalculateGuestLimit } from './guestLimits';
 
-export const experienceThreshold = (level: number): number => 50 * level * (level + 1);
+export const experienceThreshold = (level: number): number => 60 * level * (level + 1);
 
 function ensureProgression(state: GameState): void {
   state.level ??= 1;
@@ -11,24 +12,25 @@ function ensureProgression(state: GameState): void {
   state.unlockedDishIds ??= ['soup'];
   state.servedTotal ??= 0;
   state.paidExpansions ??= 0;
+  state.purchasedGuestSlots ??= 0;
 }
 
 function applyLevels(state: GameState): void {
-  while (state.level < 30 && state.experience >= experienceThreshold(state.level)) {
+  while (state.level < MAX_LEVEL && state.experience >= experienceThreshold(state.level)) {
     state.level += 1;
-    expandBounds(state);
+    if (state.level % 5 === 0) expandBounds(state);
   }
+  recalculateGuestLimit(state);
 }
 
 export function processProgression(state: GameState): void {
   ensureProgression(state);
   applyLevels(state);
-  const quest = QUESTS.find((item) => item.level === state.level);
-  if (!quest || state.completedQuestIds.includes(`quest-${quest.level}`) || !quest.test(state)) return;
-  state.completedQuestIds.push(`quest-${quest.level}`);
-  state.coins += 100 * quest.level * quest.level;
-  state.experience += 30 * quest.level;
-  if (quest.unlockDishId && !state.unlockedDishIds.includes(quest.unlockDishId)) state.unlockedDishIds.push(quest.unlockDishId);
+  const quest = QUESTS.find((item) => item.level === state.level && !state.completedQuestIds.includes(item.id));
+  if (!quest || !quest.test(state)) return;
+  state.completedQuestIds.push(quest.id);
+  state.coins += quest.reward.coins;
+  state.experience += quest.reward.experience;
   applyLevels(state);
 }
 

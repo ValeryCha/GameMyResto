@@ -132,7 +132,7 @@ Expected: 1 test file PASS, 1 test PASS.
 
 Run: поиск по `src` регулярного выражения `roadLength|roads|sidewalks|addLamp`; отдельно проверить тот же шаблон в `tests`.
 
-Expected: в `src` совпадений нет. В `tests/environment3d.test.ts` допустимы только строковые литералы `roads` и `sidewalks` внутри отрицательных проверок `toBeUndefined()`; `roadLength` и `addLamp` отсутствуют. Исторические упоминания в `docs` не удалять: они описывают прежние решения и не создают объекты в игре.
+Expected: в `src` совпадений нет. В `tests/environment3d.test.ts` допустимы только строковые литералы `roads` и `sidewalks` внутри `toBeUndefined()` и `roadLengthX` / `roadLengthZ` внутри `not.toHaveProperty()`; `addLamp` отсутствует. Исторические упоминания в `docs` не удалять: они описывают прежние решения и не создают объекты в игре.
 
 - [ ] **Step 6: Run all unit tests and the production build**
 

@@ -3,8 +3,17 @@ import type { GameState } from './types';
 export function createGame(): GameState {
   return {
     version: 1, coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
-    servedTotal: 0, paidExpansions: 0, popularity: 10, tick: 0, width: 8, height: 8,
-    randomSeed: 123456789, guestLimit: 7,
+    servedTotal: 0, revenueTotal: 0, satisfiedStreak: 0, desiredServedTotal: 0, unhappyTotal: 0,
+    paidExpansions: 0, purchasedGuestSlots: 0, upgrades: { cooking: 0, waiter: 0 }, lastDailyReward: '',
+    calendar: { lastClaimDate: '', nextDayIndex: 0, cycle: 1 },
+    popularity: 10, tick: 0, spawnProgress: 0, width: 8, height: 8,
+    randomSeed: 123456789, guestLimit: 7, maxGuestLimit: 7, furnitureInventory: {},
+    ownedWallpapers: {}, appliedWallpapers: [],
+    activeFloorPattern: null, ownedFloorPatterns: [], activeWallpaperId: null,
+    ownedDoorPatterns: [], activeDoorPattern: null,
+    ownedFurnitureSkins: [], firstPurchaseApplied: [], appliedFurnitureSkins: [], appliedStoveSkins: [], appliedCounterSkins: [],
+    appliedChefSkins: [], appliedWaiterSkins: [], ownedPaintings: [], appliedPaintings: [], ownedWindows: [], appliedWindows: [],
+    ownedLoyaltyItems: [], toleranceBonus: 0, decorationRatingBonus: 0,
     employees: [
       { id: 'chef-1', role: 'chef', position: { x: 2, y: 2 }, energy: 100 },
     ],

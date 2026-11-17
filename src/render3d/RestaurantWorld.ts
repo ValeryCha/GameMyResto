@@ -1,20 +1,34 @@
 import * as THREE from 'three';
-import { moveDoor, moveFurniture, placeFurniture, removeFurniture, rotateFurniture } from '../simulation/commands';
+import { DISHES } from '../content/dishes';
+import { moveDoor, moveFurniture, removeFurniture, rotateFurniture } from '../simulation/commands';
+import { placePurchasedFurniture, purchaseFurnitureBatch } from '../simulation/inventory';
 import { advanceSimulation } from '../simulation/tick';
 import { furnitureCells } from '../simulation/grid';
 import type { FurnitureKind, GameState } from '../simulation/types';
 import { gridToWorld, worldToGrid } from './coordinates';
-import { createActorMesh, createFurnitureMesh, createRestaurantShell } from './models';
+import { createActorMesh, createCrowdActorMesh, createFurnitureMesh, createRestaurantShell, updateDoorVisual } from './models';
 import { updateActorVisual } from './actors';
 import { classicSkin } from './skins';
-import { fitZoom } from './cameraMath';
+import { clampZoom, fitZoom } from './cameraMath';
+import { setButtonIcon } from '../ui/icons';
 import { createRestaurantEnvironment } from './environment';
+import { applyWallpaper, removeWallpaper } from '../simulation/decorations';
+import { applyFurnitureSkin, assignedSkinId, movePainting, placePainting } from '../simulation/catalogDecorations';
+import { createPaintingLayer } from './paintings';
+import { createWallpaperLayer } from './wallpapers';
+import { createFloorLayer } from './floors';
+import { createWindowLayer } from './windows';
+import { moveWindow, placeWindow } from '../simulation/wallWindows';
 
 export interface WorldCallbacks {
   onChange(): void;
   onPlacementEnd(): void;
   onPlacementError(reason: string): void;
+  onPlacementProgress(kind: FurnitureKind): void;
+  onWallpaperApplied(remaining: number): void;
+  onSkinApplied(skinId: string, targetId: string): void;
   onSelect(id: string | null, moving: boolean): void;
+  onWallDecorationSelect(kind: 'painting' | 'window', id: string): void;
   onSecond(): void;
   onFrame(): void;
 }
@@ -24,6 +38,7 @@ export class RestaurantWorld {
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera();
   private entities = new Map<string, THREE.Group>();
+  private deliveryLabels = new Map<string, HTMLDivElement>();
   private motions = new Map<string, { from: THREE.Vector3; to: THREE.Vector3; startedAt: number; grid: string }>();
   private raycaster = new THREE.Raycaster();
   private floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -35,12 +50,29 @@ export class RestaurantWorld {
   private highlights: THREE.Mesh[] = [];
   private shell: THREE.Group;
   private environment: THREE.Group;
+  private wallpaperLayer: THREE.Group;
+  private paintingLayer: THREE.Group;
+  private paintingKey = '';
+  private paintingMode: string | null = null;
+  private paintingMoveMode: string | null = null;
+  private windowLayer: THREE.Group;
+  private windowKey = '';
+  private windowMode: string | null = null;
+  private windowMoveMode: string | null = null;
+  private skinMode: string | null = null;
+  private floorLayer: THREE.Mesh | null;
+  private floorKey: string;
+  private wallpaperKey: string;
+  private wallpaperMode: string | null = null;
+  private wallpaperRemoveMode = false;
+  private wallpaperHighlight: THREE.Mesh;
   private frameId = 0;
   private lastTime = 0;
   private accumulator = 0;
   private resizeObserver: ResizeObserver;
   private zoom = 1;
   private cameraControls: HTMLDivElement;
+  private zoomRange?: HTMLInputElement;
   private pan = new THREE.Vector3();
   private drag: { id: number; startX: number; startY: number; floorPoint: THREE.Vector3 | null } | null = null;
 
@@ -68,6 +100,22 @@ export class RestaurantWorld {
     this.scene.add(this.environment);
     this.shell = createRestaurantShell(state.width, state.height, classicSkin);
     this.scene.add(this.shell);
+    this.floorLayer = createFloorLayer(state);
+    this.floorKey = this.currentFloorKey();
+    if (this.floorLayer) this.scene.add(this.floorLayer);
+    this.wallpaperLayer = createWallpaperLayer(state);
+    this.wallpaperKey = this.currentWallpaperKey();
+    this.scene.add(this.wallpaperLayer);
+    this.paintingLayer = createPaintingLayer(state);
+    this.paintingKey = this.currentPaintingKey();
+    this.scene.add(this.paintingLayer);
+    this.windowLayer = createWindowLayer(this.state);
+    this.windowKey = this.currentWindowKey();
+    this.scene.add(this.windowLayer);
+    this.wallpaperHighlight = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 1),
+      new THREE.MeshBasicMaterial({ color: 0x65d77a, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+    this.wallpaperHighlight.visible = false;
+    this.scene.add(this.wallpaperHighlight);
     for (let i = 0; i < 2; i += 1) {
       const highlight = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.025, 0.94), new THREE.MeshBasicMaterial({ color: 0x65d77a, transparent: true, opacity: 0.48 }));
       highlight.visible = false;
@@ -77,20 +125,29 @@ export class RestaurantWorld {
     this.camera.position.set(11, 13, 11);
     this.camera.lookAt(0, 0.3, 0);
     this.cameraControls = document.createElement('div');
-    this.cameraControls.style.cssText = 'position:absolute;right:16px;bottom:16px;z-index:5;display:grid;grid-template-columns:44px 44px 44px;gap:8px';
-    for (const [label, title, action] of [
-      ['+', 'Приблизить камеру', () => this.zoomIn()],
-      ['−', 'Отдалить камеру', () => this.zoomOut()],
-      ['⌂', 'Сбросить вид', () => this.resetView()],
-    ] as const) {
-      const button = document.createElement('button');
-      button.textContent = label;
-      button.setAttribute('aria-label', title);
-      button.style.cssText = 'width:44px;height:44px;border:2px solid #6b422d;border-radius:12px;background:#fff8e9;color:#3d2d24;font:bold 24px sans-serif;cursor:pointer;touch-action:manipulation';
-      button.addEventListener('pointerdown', (event) => event.stopPropagation());
-      button.addEventListener('click', action);
-      this.cameraControls.append(button);
-    }
+    this.cameraControls.className = 'camera-controls';
+    this.cameraControls.style.cssText = 'position:absolute;right:16px;bottom:16px;z-index:5;display:flex;flex-direction:column;align-items:center;gap:8px';
+    const homeButton = document.createElement('button');
+    homeButton.className = 'camera-home';
+    setButtonIcon(homeButton, 'Сбросить вид', 'home');
+    homeButton.addEventListener('pointerdown', (event) => event.stopPropagation());
+    homeButton.addEventListener('click', () => this.resetView());
+    this.zoomRange = document.createElement('input');
+    this.zoomRange.type = 'range';
+    this.zoomRange.className = 'camera-zoom';
+    this.zoomRange.dataset.testid = 'camera-zoom';
+    this.zoomRange.setAttribute('aria-label', 'Масштаб камеры');
+    this.zoomRange.title = 'Масштаб камеры';
+    this.zoomRange.max = '1.8';
+    this.zoomRange.step = '0.1';
+    this.zoomRange.addEventListener('pointerdown', (event) => event.stopPropagation());
+    this.zoomRange.addEventListener('input', () => {
+      const aspect = Math.max(this.container.clientWidth, 1) / Math.max(this.container.clientHeight, 1);
+      const minimum = fitZoom(this.state.width, this.state.height, aspect);
+      this.zoom = clampZoom(Number(this.zoomRange!.value), minimum);
+      this.resize();
+    });
+    this.cameraControls.append(this.zoomRange, homeButton);
     container.append(this.cameraControls);
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
@@ -120,6 +177,11 @@ export class RestaurantWorld {
 
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.target instanceof HTMLInputElement || this.container.hidden) return;
+    if (event.code === 'Escape') {
+      this.cancelPlacement();
+      this.callbacks.onPlacementEnd();
+      return;
+    }
     const moves: Record<string, [number, number]> = {
       KeyW: [-1, -1], ArrowUp: [-1, -1], KeyS: [1, 1], ArrowDown: [1, 1],
       KeyA: [-1, 1], ArrowLeft: [-1, 1], KeyD: [1, -1], ArrowRight: [1, -1],
@@ -138,7 +200,9 @@ export class RestaurantWorld {
     if (this.drag?.id !== event.pointerId) return;
     const isClick = Math.hypot(event.clientX - this.drag.startX, event.clientY - this.drag.startY) <= 5;
     const selectOnRelease = this.editorMode && !this.editorMoving && event.type === 'pointerup' && isClick;
+    const applyWallpaperClick = Boolean(this.wallpaperMode || this.wallpaperRemoveMode) && event.type === 'pointerup' && isClick;
     this.drag = null;
+    if (applyWallpaperClick) this.applyWallpaperAtPointer(event);
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
     this.renderer.domElement.style.cursor = 'default';
     if (selectOnRelease) this.selectFurniture(event);
@@ -163,23 +227,56 @@ export class RestaurantWorld {
   };
 
   setPlacementMode(kind: FurnitureKind | null): void {
-    this.placementKind = kind;
-    this.doorMoveMode = false;
+    this.cancelPlacement(); this.placementKind = kind;
     this.renderer.domElement.style.cursor = kind ? 'crosshair' : 'default';
-    if (!kind) this.hideHighlights();
   }
 
   setDoorMoveMode(enabled: boolean): void {
-    this.doorMoveMode = enabled;
-    this.placementKind = null;
+    this.cancelPlacement(); this.doorMoveMode = enabled;
     this.renderer.domElement.style.cursor = enabled ? 'crosshair' : 'default';
-    if (!enabled) this.hideHighlights();
+  }
+
+  setWallpaperMode(wallpaperId: string | null): void {
+    this.cancelPlacement(); this.wallpaperMode = wallpaperId;
+    this.renderer.domElement.style.cursor = wallpaperId ? 'crosshair' : 'default';
+  }
+
+  setWallpaperRemoveMode(enabled: boolean): void {
+    this.cancelPlacement(); this.wallpaperRemoveMode = enabled;
+    this.renderer.domElement.style.cursor = enabled ? 'crosshair' : 'default';
+  }
+
+  setPaintingMode(paintingId: string | null): void {
+    this.cancelPlacement(); this.paintingMode = paintingId;
+    this.renderer.domElement.style.cursor = paintingId ? 'crosshair' : 'default';
+  }
+
+  setPaintingMoveMode(paintingId: string | null): void {
+    this.cancelPlacement(); this.paintingMoveMode = paintingId;
+    this.renderer.domElement.style.cursor = paintingId ? 'crosshair' : 'pointer';
+  }
+
+  setWindowMode(windowId: string | null): void {
+    this.cancelPlacement(); this.windowMode = windowId;
+    this.renderer.domElement.style.cursor = windowId ? 'crosshair' : 'default';
+  }
+
+  setWindowMoveMode(windowId: string | null): void {
+    this.cancelPlacement(); this.windowMoveMode = windowId;
+    this.renderer.domElement.style.cursor = windowId ? 'crosshair' : 'pointer';
+  }
+
+  setSkinMode(skinId: string | null): void {
+    this.cancelPlacement(); this.skinMode = skinId;
+    this.renderer.domElement.style.cursor = skinId ? 'crosshair' : 'default';
   }
 
   cancelPlacement(): void {
-    this.placementKind = null;
-    this.doorMoveMode = false;
-    this.renderer.domElement.style.cursor = 'default';
+    this.placementKind = null; this.doorMoveMode = false; this.wallpaperMode = null;
+    this.paintingMode = null; this.paintingMoveMode = null; this.skinMode = null;
+    this.windowMode = null; this.windowMoveMode = null; this.wallpaperRemoveMode = false;
+    this.wallpaperHighlight.visible = false;
+    this.renderer.domElement.style.cursor = this.editorMode ? 'pointer' : 'default';
     this.hideHighlights();
   }
 
@@ -190,6 +287,7 @@ export class RestaurantWorld {
     this.editorMoving = false;
     this.accumulator = 0;
     this.callbacks.onSelect(null, false);
+    this.callbacks.onWallDecorationSelect('painting', '');
     this.renderer.domElement.style.cursor = enabled ? 'pointer' : 'default';
   }
 
@@ -215,6 +313,7 @@ export class RestaurantWorld {
     this.editorMoving = false;
     this.hideHighlights();
     this.callbacks.onSelect(null, false);
+    this.callbacks.onWallDecorationSelect('painting', '');
     this.callbacks.onChange();
   }
 
@@ -240,6 +339,8 @@ export class RestaurantWorld {
     this.renderer.domElement.removeEventListener('wheel', this.onWheel);
     window.removeEventListener('keydown', this.onKeyDown);
     this.cameraControls.remove();
+    this.deliveryLabels.forEach((label) => label.remove());
+    this.deliveryLabels.clear();
     this.scene.traverse((object) => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
     this.renderer.dispose();
     this.renderer.domElement.remove();
@@ -255,11 +356,89 @@ export class RestaurantWorld {
     }
     if (this.editorMode) this.accumulator = 0;
     this.syncShell();
+    this.syncWallpapers();
+    this.syncPaintings();
+    this.syncWindows();
+    this.syncFloor();
     this.syncEntities(time);
     this.renderer.render(this.scene, this.camera);
     this.callbacks.onFrame();
     this.frameId = requestAnimationFrame(this.animate);
   };
+
+  private currentFloorKey(): string {
+    return `${this.state.width}x${this.state.height}:${this.state.activeFloorPattern ?? ''}`;
+  }
+
+  private syncFloor(): void {
+    const key = this.currentFloorKey();
+    if (key === this.floorKey) return;
+    if (this.floorLayer) {
+      this.scene.remove(this.floorLayer);
+      this.floorLayer.geometry.dispose();
+      const material = this.floorLayer.material as THREE.MeshStandardMaterial;
+      material.map?.dispose();
+      material.dispose();
+    }
+    this.floorLayer = createFloorLayer(this.state);
+    this.floorKey = key;
+    if (this.floorLayer) this.scene.add(this.floorLayer);
+  }
+
+  private currentWallpaperKey(): string {
+    return `${this.state.width}x${this.state.height}:${this.state.appliedWallpapers.map((item) => `${item.wallCellId}:${item.wallpaperId}`).join('|')}`;
+  }
+
+  private syncWallpapers(): void {
+    const key = this.currentWallpaperKey();
+    if (key === this.wallpaperKey) return;
+    this.wallpaperHighlight.visible = false;
+    this.scene.remove(this.wallpaperLayer);
+    this.wallpaperLayer.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        (object.material as THREE.Material).dispose();
+      }
+    });
+    this.wallpaperLayer = createWallpaperLayer(this.state);
+    this.wallpaperKey = key;
+    this.scene.add(this.wallpaperLayer);
+  }
+
+  private currentPaintingKey(): string {
+    return `${this.state.width}x${this.state.height}:${this.state.appliedPaintings.map((item) => `${item.id}:${item.side}:${item.index}`).join('|')}`;
+  }
+
+  private syncPaintings(): void {
+    const key = this.currentPaintingKey();
+    if (key === this.paintingKey) return;
+    this.scene.remove(this.paintingLayer);
+    this.paintingLayer.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        const material = object.material as THREE.MeshBasicMaterial;
+        material.map?.dispose(); material.dispose();
+      }
+    });
+    this.paintingLayer = createPaintingLayer(this.state);
+    this.paintingKey = key;
+    this.scene.add(this.paintingLayer);
+    this.windowLayer = createWindowLayer(this.state);
+    this.windowKey = this.currentWindowKey();
+    this.scene.add(this.windowLayer);
+  }
+
+  private currentWindowKey(): string {
+    return `${this.state.width}x${this.state.height}:${(this.state.appliedWindows ?? []).map((item) => `${item.id}:${item.side}:${item.index}`).join('|')}`;
+  }
+
+  private syncWindows(): void {
+    const key = this.currentWindowKey();
+    if (key === this.windowKey) return;
+    this.scene.remove(this.windowLayer);
+    this.windowLayer.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (object.material as THREE.Material).dispose(); } });
+    this.windowLayer = createWindowLayer(this.state); this.windowKey = key; this.scene.add(this.windowLayer);
+  }
 
   private syncShell(): void {
     if (this.shell.userData.width === this.state.width && this.shell.userData.height === this.state.height) return;
@@ -273,14 +452,15 @@ export class RestaurantWorld {
     });
     this.environment = createRestaurantEnvironment(this.state.width, this.state.height);
     this.scene.add(this.environment);
+    this.resetView();
   }
 
   private resize(): void {
     const width = Math.max(this.container.clientWidth, 1);
     const height = Math.max(this.container.clientHeight, 1);
     const aspect = width / height;
-    const roomHeight = Math.max(12, this.state.height + 4);
-    const viewHeight = (aspect < 1 ? roomHeight / aspect : roomHeight) / this.zoom;
+    const roomHeight = Math.max(12, Math.max(this.state.width, this.state.height) + 5);
+    const viewHeight = (roomHeight / Math.min(1, aspect)) / this.zoom;
     const offsetX = (this.state.width - 8) / 2;
     const offsetZ = (this.state.height - 8) / 2;
     this.clampPan();
@@ -292,6 +472,12 @@ export class RestaurantWorld {
     this.camera.bottom = -viewHeight / 2;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    if (this.zoomRange) {
+      const minimum = fitZoom(this.state.width, this.state.height, aspect);
+      this.zoomRange.min = String(minimum);
+      this.zoomRange.value = String(this.zoom);
+      this.zoomRange.setAttribute('aria-valuetext', `${this.zoom.toFixed(1)}×`);
+    }
   }
 
   private floorFromPointer(event: PointerEvent): THREE.Vector3 | null {
@@ -299,6 +485,16 @@ export class RestaurantWorld {
     const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
     this.raycaster.setFromCamera(pointer, this.camera);
     return this.raycaster.ray.intersectPlane(this.floorPlane, new THREE.Vector3());
+  }
+
+  private raycasterFromPointer(event: PointerEvent): THREE.Raycaster {
+    const bounds = this.renderer.domElement.getBoundingClientRect();
+    const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
+    this.raycaster.setFromCamera(pointer, this.camera); return this.raycaster;
+  }
+
+  private wallpaperTargetFromPointer(event: PointerEvent): THREE.Mesh | undefined {
+    return this.raycasterFromPointer(event).intersectObjects(this.wallpaperLayer.children, false)[0]?.object as THREE.Mesh | undefined;
   }
 
   private gridFromPointer(event: PointerEvent) {
@@ -319,6 +515,18 @@ export class RestaurantWorld {
       this.clampPan();
       this.resize();
       this.drag.floorPoint = this.floorFromPointer(event);
+      return;
+    }
+    if (this.wallpaperMode || this.wallpaperRemoveMode || this.paintingMode || this.paintingMoveMode || this.windowMode || this.windowMoveMode) {
+      const target = this.wallpaperTargetFromPointer(event);
+      this.wallpaperHighlight.visible = Boolean(target);
+      if (target) {
+        this.wallpaperHighlight.geometry = target.geometry;
+        this.wallpaperHighlight.position.copy(target.position);
+        this.wallpaperHighlight.rotation.copy(target.rotation);
+        const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(target.quaternion);
+        this.wallpaperHighlight.position.addScaledVector(normal, 0.015);
+      }
       return;
     }
     if (!this.placementKind && !this.doorMoveMode && !this.editorMoving) return;
@@ -344,6 +552,16 @@ export class RestaurantWorld {
   };
 
   private selectFurniture(event: PointerEvent): void {
+    const decorationHit = this.raycasterFromPointer(event).intersectObjects([this.paintingLayer, this.windowLayer], true)[0];
+    let decoration: THREE.Object3D | undefined = decorationHit?.object;
+    while (decoration && !decoration.userData.wallDecorationId) decoration = decoration.parent ?? undefined;
+    if (decoration) {
+      this.selectedId = null; this.editorMoving = false; this.hideHighlights();
+      this.callbacks.onSelect(null, false);
+      this.callbacks.onWallDecorationSelect(decoration.userData.wallDecorationKind, decoration.userData.wallDecorationId);
+      return;
+    }
+    this.callbacks.onWallDecorationSelect('painting', '');
     const bounds = this.renderer.domElement.getBoundingClientRect();
     const pointer = new THREE.Vector2(((event.clientX - bounds.left) / bounds.width) * 2 - 1, -((event.clientY - bounds.top) / bounds.height) * 2 + 1);
     this.raycaster.setFromCamera(pointer, this.camera);
@@ -364,7 +582,61 @@ export class RestaurantWorld {
     this.callbacks.onSelect(this.selectedId, false);
   }
 
+  private applyWallpaperAtPointer(event: PointerEvent): void {
+    const target = this.wallpaperTargetFromPointer(event);
+    if (!target || (!this.wallpaperMode && !this.wallpaperRemoveMode)) return;
+    if (this.wallpaperRemoveMode) {
+      const result = removeWallpaper(this.state, target.userData.wallCellId);
+      if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Здесь нет обоев');
+      this.callbacks.onChange(); return;
+    }
+    const wallpaperId = this.wallpaperMode!;
+    const result = applyWallpaper(this.state, target.userData.wallCellId, wallpaperId);
+    if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя наклеить здесь');
+    const remaining = this.state.ownedWallpapers[wallpaperId] ?? 0;
+    this.callbacks.onChange(); this.callbacks.onWallpaperApplied(remaining);
+    if (remaining < 1) { this.cancelPlacement(); this.callbacks.onPlacementEnd(); }
+  }
+
   private onPointer = (event: PointerEvent): void => {
+    if (this.skinMode) {
+      if (event.button !== 0) return;
+      const hit = this.raycasterFromPointer(event).intersectObjects([...this.entities.values()], true)[0];
+      let object: THREE.Object3D | undefined = hit?.object;
+      while (object && !object.userData.entityId) object = (object.parent ?? undefined) as THREE.Object3D | undefined;
+      const targetId = object?.userData.entityId as string | undefined;
+      if (!targetId) return this.callbacks.onPlacementError('Выберите подходящий предмет или сотрудника');
+      const result = applyFurnitureSkin(this.state, this.skinMode, targetId);
+      if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Скин не подходит объекту');
+      const skinId = this.skinMode; this.cancelPlacement(); this.callbacks.onPlacementEnd();
+      this.callbacks.onChange(); this.callbacks.onSkinApplied(skinId, targetId); return;
+    }
+    if (this.windowMode || this.windowMoveMode) {
+      if (event.button !== 0) return;
+      const target = this.wallpaperTargetFromPointer(event); if (!target) return;
+      const [side, rawIndex] = (target.userData.wallCellId as string).split('-');
+      const result = this.windowMoveMode
+        ? moveWindow(this.state, this.windowMoveMode, side as 'north' | 'south' | 'west' | 'east', Number(rawIndex))
+        : placeWindow(this.state, this.windowMode!, side as 'north' | 'south' | 'west' | 'east', Number(rawIndex));
+      if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя установить окно здесь');
+      this.cancelPlacement(); this.callbacks.onPlacementEnd(); this.callbacks.onChange(); return;
+    }
+    if (this.paintingMode || this.paintingMoveMode) {
+      if (event.button !== 0) return;
+      const target = this.wallpaperTargetFromPointer(event); if (!target) return;
+      const [side, rawIndex] = (target.userData.wallCellId as string).split('-');
+      const result = this.paintingMoveMode
+        ? movePainting(this.state, this.paintingMoveMode, side as 'north' | 'south' | 'west' | 'east', Number(rawIndex))
+        : placePainting(this.state, this.paintingMode!, side as 'north' | 'south' | 'west' | 'east', Number(rawIndex));
+      if (!result.ok) return this.callbacks.onPlacementError(result.reason ?? 'Нельзя повесить картину здесь');
+      this.cancelPlacement(); this.callbacks.onPlacementEnd(); this.callbacks.onChange(); return;
+    }
+    if (this.wallpaperMode || this.wallpaperRemoveMode) {
+      if (event.button !== 0) return;
+      this.drag = { id: event.pointerId, startX: event.clientX, startY: event.clientY, floorPoint: this.floorFromPointer(event) };
+      this.renderer.domElement.setPointerCapture(event.pointerId);
+      return;
+    }
     if (this.editorMode && this.editorMoving) {
       const point = this.gridFromPointer(event);
       if (!point || !this.selectedId) return;
@@ -385,15 +657,40 @@ export class RestaurantWorld {
     }
     const point = this.gridFromPointer(event);
     if (!point) return;
-    const result = this.doorMoveMode ? moveDoor(this.state, point) : placeFurniture(this.state, this.placementKind!, point);
+    const result = this.doorMoveMode ? moveDoor(this.state, point) : placePurchasedFurniture(this.state, this.placementKind!, point);
     if (!result.ok) {
       this.callbacks.onPlacementError(result.reason ?? 'Нельзя разместить здесь');
       return;
     }
-    this.cancelPlacement();
-    this.callbacks.onPlacementEnd();
+    if (!this.doorMoveMode && this.placementKind && (this.state.furnitureInventory[this.placementKind] ?? 0) < 1) {
+      const refill = purchaseFurnitureBatch(this.state, this.placementKind, 1);
+      if (refill.ok) this.callbacks.onPlacementProgress(this.placementKind);
+      else {
+        this.cancelPlacement();
+        this.callbacks.onPlacementEnd();
+      }
+    } else if (this.doorMoveMode || !this.placementKind) {
+      this.cancelPlacement();
+      this.callbacks.onPlacementEnd();
+    }
     this.callbacks.onChange();
   };
+
+  private syncDeliveryLabel(actorId: string, model: THREE.Group, order: GameState['orders'][number] | undefined): void {
+    const show = order?.state === 'waitingDelivery' && order.pickedUp && order.desired;
+    let label = this.deliveryLabels.get(actorId);
+    if (!show) { if (label) label.hidden = true; return; }
+    if (!label) {
+      label = document.createElement('div'); label.className = 'delivery-label'; label.setAttribute('role', 'status');
+      this.container.append(label); this.deliveryLabels.set(actorId, label);
+    }
+    const dish = DISHES.find((item) => item.id === order.dishId);
+    label.textContent = `Несу: ${dish?.name ?? 'желаемое блюдо'}`; label.hidden = false;
+    const point = model.position.clone(); point.y += 2.05; point.project(this.camera);
+    const x = THREE.MathUtils.clamp((point.x + 1) * this.container.clientWidth / 2, 80, this.container.clientWidth - 80);
+    const y = THREE.MathUtils.clamp((1 - point.y) * this.container.clientHeight / 2, 24, this.container.clientHeight - 24);
+    label.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
+  }
 
   private hideHighlights(): void {
     for (const highlight of this.highlights) highlight.visible = false;
@@ -404,17 +701,23 @@ export class RestaurantWorld {
     for (const item of this.state.furniture) {
       current.add(item.id);
       let model = this.entities.get(item.id);
-      const expected = `${item.position.x},${item.position.y},${item.rotation}`;
+      const furnitureSkin = assignedSkinId(this.state, item.id);
+      const expected = `${item.position.x},${item.position.y},${item.rotation}:${item.kind === 'door' ? this.state.activeDoorPattern ?? '' : furnitureSkin ?? ''}`;
       if (model && model.userData.grid !== expected) {
         this.scene.remove(model);
         this.entities.delete(item.id);
         model = undefined;
       }
       if (!model) {
-        model = createFurnitureMesh(item, classicSkin);
+        model = createFurnitureMesh(item, classicSkin, this.state.activeDoorPattern, furnitureSkin);
         model.userData.grid = expected;
         this.entities.set(item.id, model);
         this.scene.add(model);
+      }
+      if (item.kind === 'door') {
+        const open = this.state.customers.some((guest) => ['entering', 'leaving'].includes(guest.state) &&
+          Math.abs(guest.position.x - item.position.x) + Math.abs(guest.position.y - item.position.y) <= 2);
+        updateDoorVisual(model, open, 1 / 60);
       }
       if (item.kind === 'stove') {
         const cooking = this.state.orders.some((order) => order.state === 'cooking');
@@ -429,8 +732,14 @@ export class RestaurantWorld {
       const position = gridToWorld(actor.position);
       const target = new THREE.Vector3(position.x, 0.08, position.z);
       const grid = `${actor.position.x},${actor.position.y}`;
+      const crowd = this.state.customers.length > 30 && !('role' in actor);
+      const actorSkin = 'role' in actor ? assignedSkinId(this.state, actor.id) : undefined;
+      if (model && (Boolean(model.userData.crowd) !== crowd || model.userData.appliedSkinId !== (actorSkin ?? ''))) {
+        this.scene.remove(model); this.entities.delete(actor.id); model = undefined;
+      }
       if (!model) {
-        model = createActorMesh(actor);
+        model = crowd ? createCrowdActorMesh(actor, actorSkin) : createActorMesh(actor, actorSkin);
+        model.userData.appliedSkinId = actorSkin ?? '';
         model.position.copy(target);
         this.entities.set(actor.id, model);
         this.motions.set(actor.id, { from: target.clone(), to: target.clone(), startedAt: time, grid });
@@ -459,16 +768,21 @@ export class RestaurantWorld {
       }
       const order = 'role' in actor && actor.taskId ? this.state.orders.find((item) => item.id === actor.taskId) : undefined;
       const patience = customer && !['eating', 'leaving', 'ordering', 'seated'].includes(customer.state)
-        ? (customer.state === 'waitingFood' ? (customer.foodWait ?? 120) / 120 : customer.patience / 300) : undefined;
+        ? (customer.state === 'waitingFood' ? (customer.foodWait ?? 120) / 120 : customer.patience / 240) : undefined;
       updateActorVisual(model, { moving, seated, time: time / 1000, delta: 1 / 60, patience,
+        desired: Boolean(customer?.hasDesire && !['eating', 'leaving'].includes(customer.state)),
+        desiredDishId: customer?.desiredDishId,
         carrying: order?.state === 'waitingDelivery' && order.pickedUp, cooking: order?.state === 'cooking' });
       model.position.y += (model.userData.bodyBob ?? 0) + (model.userData.seatOffset ?? 0);
+      this.syncDeliveryLabel(actor.id, model, order);
     }
     for (const [id, model] of this.entities) {
       if (!current.has(id)) {
         this.scene.remove(model);
         this.entities.delete(id);
         this.motions.delete(id);
+        const label = this.deliveryLabels.get(id);
+        if (label) { label.remove(); this.deliveryLabels.delete(id); }
       }
     }
   }

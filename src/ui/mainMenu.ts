@@ -1,3 +1,5 @@
+import { setButtonIcon, type IconName } from './icons';
+
 export interface MainMenuCallbacks {
   onPlay(): void;
   onNewGame(): void;
@@ -7,7 +9,8 @@ export interface MainMenuCallbacks {
 function button(label: string, onClick: () => void, primary = false): HTMLButtonElement {
   const element = document.createElement('button');
   element.className = primary ? 'menu-button primary' : 'menu-button';
-  element.textContent = label;
+  const icons: Record<string, IconName> = { 'Играть': 'play', 'Новая игра': 'reset', 'Настройки': 'settings', 'Об игре': 'info', 'Назад': 'back', 'Начать заново': 'check', 'Отмена': 'close' };
+  setButtonIcon(element, label, icons[label] ?? 'check');
   element.addEventListener('click', onClick);
   return element;
 }

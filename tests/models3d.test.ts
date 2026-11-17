@@ -3,6 +3,7 @@ import { createFurnitureMesh, createActorMesh, createRestaurantShell } from '../
 import { classicSkin } from '../src/render3d/skins';
 import { furnitureCells } from '../src/simulation/grid';
 import * as THREE from 'three';
+import { FURNITURE_SKINS } from '../src/content/furnitureSkins';
 
 describe('procedural models', () => {
   it('builds real meshes for every supported object', () => {
@@ -38,6 +39,33 @@ describe('procedural models', () => {
     expect(stove.userData.flame).toBeInstanceOf(THREE.Group);
     expect(stove.userData.pan.visible).toBe(false);
     expect(stove.userData.flame.visible).toBe(false);
+  });
+
+  it('строит уникальные рабочие модели для всех 20 новых скинов', () => {
+    for (const skin of FURNITURE_SKINS.filter((item) => ['stove', 'counter', 'chef', 'waiter'].includes(item.kind))) {
+      const model = skin.kind === 'stove' || skin.kind === 'counter'
+        ? createFurnitureMesh({ id: skin.id, kind: skin.kind, position: { x: 0, y: 0 }, rotation: 0 }, classicSkin, null, skin.id)
+        : createActorMesh({ id: skin.id, role: skin.kind === 'chef' ? 'chef' : 'waiter', position: { x: 0, y: 0 }, energy: 100 }, skin.id);
+      expect(model.isGroup).toBe(true);
+      expect(model.children.length).toBeGreaterThan(1);
+      expect(new THREE.Box3().setFromObject(model).isEmpty()).toBe(false);
+    }
+  });
+
+  it('использует точные цвета каждого скина в реальных материалах', () => {
+    for (const skin of FURNITURE_SKINS) {
+      const model = skin.kind === 'chef' || skin.kind === 'waiter'
+        ? createActorMesh({ id: skin.id, role: skin.kind, position: { x: 0, y: 0 }, energy: 100 }, skin.id)
+        : createFurnitureMesh({ id: skin.id, kind: skin.kind, position: { x: 0, y: 0 }, rotation: 0 }, classicSkin, null, skin.id);
+      const colors = new Set<number>();
+      model.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) if ('color' in material) colors.add((material.color as THREE.Color).getHex());
+        }
+      });
+      for (const color of [skin.primary, skin.secondary, skin.accent]) expect(colors, `${skin.id}: ${color}`).toContain(Number.parseInt(color.slice(1), 16));
+    }
   });
 
   it('содержит суставы для анимации и рабочие предметы персонала', () => {

@@ -6,11 +6,49 @@ export interface Dish {
   unlockLevel: number;
 }
 
-export const DISHES: Dish[] = [
-  { id: 'soup', name: 'Суп', price: 5, cookSeconds: 6, unlockLevel: 1 },
-  { id: 'pasta', name: 'Паста', price: 7, cookSeconds: 8, unlockLevel: 2 },
-  { id: 'salad', name: 'Салат', price: 12, cookSeconds: 5, unlockLevel: 4 },
-  { id: 'cutlet', name: 'Котлета', price: 20, cookSeconds: 10, unlockLevel: 6 },
-  { id: 'fish', name: 'Рыбное блюдо', price: 35, cookSeconds: 12, unlockLevel: 8 },
-  { id: 'signature', name: 'Фирменный ужин', price: 50, cookSeconds: 15, unlockLevel: 10 },
+const DISH_NAMES: [string, string][] = [
+  ['soup', 'Суп'],
+  ['pasta', 'Паста'],
+  ['salad', 'Салат'],
+  ['cutlet', 'Котлета'],
+  ['fish', 'Рыбное блюдо'],
+  ['signature', 'Фирменный ужин'],
+  ['omelet', 'Омлет'],
+  ['pizza', 'Пицца'],
+  ['burger', 'Бургер'],
+  ['dumplings', 'Пельмени'],
+  ['risotto', 'Ризотто'],
+  ['tacos', 'Тако'],
+  ['sushi', 'Суши'],
+  ['borscht', 'Борщ'],
+  ['steak', 'Стейк'],
+  ['paella', 'Паэлья'],
+  ['lasagna', 'Лазанья'],
+  ['khinkali', 'Хинкали'],
+  ['tomYam', 'Том-ям'],
+  ['pekingDuck', 'Утка по-пекински'],
+  ['ramen', 'Рамен'],
+  ['moussaka', 'Муссака'],
+  ['ravioli', 'Равиоли'],
+  ['chakhokhbili', 'Чахохбили'],
+  ['ratatouille', 'Рататуй'],
+  ['meatballs', 'Тефтели'],
+  ['kebab', 'Шашлык'],
+  ['pilaf', 'Плов'],
+  ['fondue', 'Фондю'],
+  ['salmon', 'Лосось в соусе'],
+  ['veal', 'Телячье филе'],
+  ['tastingSet', 'Дегустационный сет'],
+  ['royalBanquet', 'Королевский банкет'],
 ];
+
+export const dishPrice = (level: number): number => 5 + 2 * (level - 1);
+export const recipeCost = (level: number): number => level === 1 ? 0 : 50 * Math.round(3.45 * Math.pow(level, 1.35));
+
+export const DISHES: Dish[] = DISH_NAMES.map(([id, name], index) => ({
+  id,
+  name,
+  price: dishPrice(index + 1),
+  cookSeconds: 6 + index % 10,
+  unlockLevel: index + 1,
+}));

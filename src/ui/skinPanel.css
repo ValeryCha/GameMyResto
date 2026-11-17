@@ -1,0 +1,6 @@
+.skin-panel { position: fixed; z-index: 8; inset: 50% auto auto 50%; display: grid; gap: 12px; width: min(420px, calc(100vw - 32px)); padding: 24px; border: 1px solid #b9c4b2; border-radius: 20px; background: #f6f6f4; color: #1c3a13; box-shadow: 0 24px 80px #10210c66; transform: translate(-50%, -50%); }
+.skin-panel strong { font-size: 24px; }
+.skin-panel span { color: #5b6954; font: 14px/1.45 system-ui, sans-serif; }
+.skin-panel button { display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 12px; overflow: hidden; border: 2px solid #56824a; border-radius: 12px; background: #1c3a13; box-shadow: 0 3px 0 #10210c55; color: white; font: 700 15px/1.25 system-ui, sans-serif; text-align: center; cursor: pointer; }
+.skin-panel button:nth-of-type(2) { background: #dce7d4; color: #1c3a13; }
+.skin-panel button:last-child { background: transparent; color: #52634a; }

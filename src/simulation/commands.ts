@@ -1,6 +1,8 @@
 import { CATALOG } from '../content/coreContent';
+import { furnitureSkinById } from '../content/furnitureSkins';
 import type { CommandResult, FurnitureKind, GameState, Point } from './types';
 import { furnitureCells, samePoint } from './grid';
+import { applyDecorationRating, decorationRating } from './rating';
 
 function inside(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height;
@@ -18,6 +20,7 @@ export function placeFurniture(state: GameState, kind: FurnitureKind, position: 
   if (state.coins < item.price) return { ok: false, reason: 'Недостаточно монет' };
   state.coins -= item.price;
   state.popularity = Math.min(100, state.popularity + item.rating);
+  if (kind === 'plant') applyDecorationRating(state, decorationRating(CATALOG.plant.price));
   state.furniture.push({ id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation: 0 });
   return { ok: true };
 }
@@ -86,7 +89,16 @@ export function removeFurniture(state: GameState, id: string): CommandResult {
   if (!item) return { ok: false, reason: 'Объект не найден' };
   if (itemInUse(state, item)) return { ok: false, reason: 'Объект используется гостем или заказом' };
   state.furniture = state.furniture.filter((candidate) => candidate.id !== id);
+  const assignments = item.kind === 'stove' ? state.appliedStoveSkins : item.kind === 'counter' ? state.appliedCounterSkins : state.appliedFurnitureSkins;
+  const assignment = assignments.find((candidate) => candidate.furnitureId === id);
+  const skin = assignment ? furnitureSkinById(assignment.skinId) : undefined;
+  if (skin) applyDecorationRating(state, -decorationRating(skin.price));
+  const remaining = assignments.filter((candidate) => candidate.furnitureId !== id);
+  if (item.kind === 'stove') state.appliedStoveSkins = remaining;
+  else if (item.kind === 'counter') state.appliedCounterSkins = remaining;
+  else state.appliedFurnitureSkins = remaining;
   state.coins += Math.floor(CATALOG[item.kind].price * 0.5);
+  if (item.kind === 'plant') applyDecorationRating(state, -decorationRating(CATALOG.plant.price));
   for (const guest of state.customers.filter((candidate) => candidate.seatId === id)) {
     guest.seatId = undefined;
     guest.target = undefined;
