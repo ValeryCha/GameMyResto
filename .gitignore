@@ -15,3 +15,4 @@ role-*.txt
 docs/prompt-logic-*.txt
 docs/project-context-for-deepseek.md
 *.txt
+.idea/
