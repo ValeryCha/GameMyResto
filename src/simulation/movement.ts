@@ -6,7 +6,8 @@ export type MoveResult = 'arrived' | 'moving' | 'blocked';
 export function moveToward(state: GameState, actor: { id?: string; position: Point }, target: Point, allowFurnitureTarget = false): MoveResult {
   if (samePoint(actor.position, target)) return 'arrived';
   if (!allowFurnitureTarget && !isWalkable(state, target)) return 'blocked';
-  const occupied = [...state.employees, ...state.customers]
+  // Персонал может расходиться друг с другом, но никогда не проходит сквозь гостей.
+  const occupied = ('role' in actor ? state.customers : [...state.employees, ...state.customers])
     .filter((other) => other.id !== actor.id)
     .map((other) => other.position);
   const path = findPath(state, actor.position, target, occupied);

@@ -1,19 +1,22 @@
 import type { GameState, Point } from './types';
 
 export const samePoint = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
-export const furnitureCells = (item: GameState['furniture'][number]): Point[] =>
-  item.kind === 'tableDouble'
+export const furnitureCells = (item: GameState['furniture'][number], state?: GameState): Point[] => {
+  const doubleStove = item.kind === 'stove' && state?.appliedStoveSkins.some((assignment) =>
+    assignment.furnitureId === item.id && assignment.skinId === 'industrialStove');
+  return item.kind === 'tableDouble' || doubleStove
     ? [item.position, item.rotation === 90 || item.rotation === 270
       ? { x: item.position.x, y: item.position.y + 1 }
       : { x: item.position.x + 1, y: item.position.y }]
     : [item.position];
+};
 const key = (p: Point) => `${p.x},${p.y}`;
 const heuristic = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
 export function isWalkable(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height &&
     !state.furniture.some((item) => item.kind !== 'chair' &&
-      furnitureCells(item).some((cell) => samePoint(cell, point)));
+      furnitureCells(item, state).some((cell) => samePoint(cell, point)));
 }
 
 export function findPath(state: GameState, from: Point, to: Point, occupied: Point[] = []): Point[] {

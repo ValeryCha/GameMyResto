@@ -43,6 +43,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   private envelope(state: GameState): SaveEnvelope {
-    return { schema: 1, savedAt: new Date().toISOString(), state };
+    const { ratingHistory: _transientRatingHistory, editorMode: _transientEditorMode, ...persistentState } = state;
+    return { schema: 1, savedAt: new Date().toISOString(), state: persistentState as GameState };
   }
 }

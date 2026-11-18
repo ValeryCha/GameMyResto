@@ -12,7 +12,7 @@ const adjacent = (a: { x: number; y: number }, b: { x: number; y: number }) =>
 function tableForChair(state: GameState, chair: Furniture): Furniture | undefined {
   return state.furniture.find((item) =>
     (item.kind === 'table' || item.kind === 'tableDouble') &&
-    furnitureCells(item).some((cell) => adjacent(cell, chair.position)));
+    furnitureCells(item, state).some((cell) => adjacent(cell, chair.position)));
 }
 
 export function findSeat(state: GameState, guest: Customer, canReserve?: (chair: Furniture) => boolean): SeatAssignment | undefined {

@@ -21,6 +21,22 @@ describe('локальные сохранения', () => {
     expect(JSON.parse(values.get('moy-restoran:backup')!).state.coins).toBe(1000);
   });
 
+  it('не сохраняет историю рейтинга и начинает тренд заново после загрузки', () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    };
+    const adapter = new LocalStorageAdapter(storage);
+    const state = createGame();
+    state.tick = 75;
+    state.ratingHistory.push({ tick: 75, value: 120 });
+    adapter.save(state);
+    expect(JSON.parse(values.get('moy-restoran:primary')!).state.ratingHistory).toBeUndefined();
+    expect(adapter.load().ratingHistory).toEqual([{ tick: 75, value: 100 }]);
+  });
+
   it('восстанавливает повреждённое основное сохранение из копии', () => {
     const values = new Map<string, string>();
     const storage = {

@@ -1,5 +1,5 @@
-import { availableDishes } from './progression';
 import { countUsableSeats, isPeakHour } from './guestFlow';
+import { kitchenRate } from './throughput';
 import type { GameState, PeakResult, PeakStats } from './types';
 
 export const PEAK_CYCLE_TICKS = 180;
@@ -115,28 +115,16 @@ export function peakTipMultiplier(state: GameState): number {
 }
 
 export function peakBottleneck(state: GameState): 'места' | 'кухня' | 'доставка' {
-  const chefs = Math.min(5, state.employees.filter((employee) => employee.role === 'chef').length);
-  const stoves = Math.min(5, state.furniture.filter((item) => item.kind === 'stove').length);
+  const kitchen = kitchenRate(state);
   const waiters = Math.min(5, state.employees.filter((employee) => employee.role === 'waiter').length);
   const counters = Math.min(5, state.furniture.filter((item) => item.kind === 'counter').length);
-  const dishes = availableDishes(state);
-  const rating = state.popularity / 1000;
-  const desiredWeights = dishes.map((dish) => 1 + rating * (dish.unlockLevel - 1));
-  const desiredWeightTotal = desiredWeights.reduce((sum, weight) => sum + weight, 0);
-  const cookTime = dishes.length
-    ? dishes.reduce((sum, dish, index) => sum + dish.cookSeconds *
-      (0.95 / dishes.length + 0.05 * desiredWeights[index] / desiredWeightTotal), 0)
-    : 0;
-  const kitchenRate = cookTime > 0
-    ? Math.min(chefs, stoves) / (cookTime * (1 - 0.08 * state.upgrades.cooking))
-    : 0;
   const serviceRate = 0.92 * Math.min(waiters, counters) /
     (10 * (1 - 0.07 * state.upgrades.waiter));
   const seatRate = countUsableSeats(state) /
     (10 / Math.max(1, Math.min(waiters, counters)) + 8);
 
-  if (seatRate <= kitchenRate && seatRate <= serviceRate) return 'места';
-  if (kitchenRate <= serviceRate) return 'кухня';
+  if (seatRate <= kitchen && seatRate <= serviceRate) return 'места';
+  if (kitchen <= serviceRate) return 'кухня';
   return 'доставка';
 }
 

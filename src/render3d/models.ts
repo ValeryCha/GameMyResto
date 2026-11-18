@@ -101,7 +101,13 @@ function counterModel(skinId?: string): THREE.Group {
   if (skinId === 'neonCounter') box(group, [0.84, 0.055, 0.04], [0, 0.62, 0.39], colors.accent);
   if (skinId === 'metalCounter') for (const x of [-0.34, 0.34]) for (const y of [0.18, 0.56]) sphere(group, 0.025, [x, y, 0.38], colors.accent);
   if (skinId === 'vintageCounter') for (const x of [-0.28, 0, 0.28]) box(group, [0.04, 0.56, 0.035], [x, 0.36, 0.39], colors.secondary);
-  cylinder(group, 0.17, 0.025, [0, 0.835, 0], cream);
+  const readyDish = new THREE.Group();
+  cylinder(readyDish, 0.2, 0.025, [0, 0.835, 0], cream);
+  sphere(readyDish, 0.13, [0, 0.91, 0], 0xe8a44f, [1, 0.55, 1]);
+  cylinder(readyDish, 0.025, 0.07, [0, 0.99, 0], 0x65a35d);
+  readyDish.visible = false;
+  group.add(readyDish);
+  group.userData.readyDish = readyDish;
   return group;
 }
 
@@ -144,9 +150,12 @@ export function createFurnitureMesh(item: Furniture, skin: RestaurantSkin, doorP
       : item.kind === 'stove' ? stoveModel(furnitureSkinId)
         : item.kind === 'counter' ? counterModel(furnitureSkinId)
           : item.kind === 'plant' ? plantModel() : doorModel(doorPatternId);
+  const doubleStove = item.kind === 'stove' && furnitureSkinId === 'industrialStove';
+  if (doubleStove) group.scale.x = 1.85;
   const position = gridToWorld(item.position);
-  const verticalDouble = item.kind === 'tableDouble' && (item.rotation === 90 || item.rotation === 270);
-  group.position.set(position.x + (item.kind === 'tableDouble' && !verticalDouble ? 0.5 : 0), 0.09, position.z + (verticalDouble ? 0.5 : 0));
+  const doubleItem = item.kind === 'tableDouble' || doubleStove;
+  const verticalDouble = doubleItem && (item.rotation === 90 || item.rotation === 270);
+  group.position.set(position.x + (doubleItem && !verticalDouble ? 0.5 : 0), 0.09, position.z + (verticalDouble ? 0.5 : 0));
   group.rotation.y = item.rotation * Math.PI / 180;
   group.userData.entityId = item.id;
   group.userData.skinId = skin.id;

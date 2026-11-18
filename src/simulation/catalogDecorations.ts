@@ -4,6 +4,7 @@ import { paintingById, type Painting } from '../content/paintings';
 import { windowWallCells } from './wallWindows';
 import { windowById } from '../content/windows';
 import { applyDecorationRating, decorationRating } from './rating';
+import { furnitureCells } from './grid';
 import type { ActorSkinAssignment, AppliedPainting, CommandResult, FurnitureSkinAssignment, GameState } from './types';
 
 function furnitureAssignments(state: GameState, kind: string): FurnitureSkinAssignment[] {
@@ -41,6 +42,19 @@ export function applyFurnitureSkin(state: GameState, skinId: string, targetId?: 
   if (!ids.length) return { ok: false, reason: 'Нет подходящих объектов' };
   const validIds = ids.filter((id) => targetIds(state, skin.kind).includes(id));
   if (validIds.length !== ids.length) return { ok: false, reason: 'Этот скин не подходит объекту' };
+  if (skin.id === 'industrialStove') {
+    const appliedStoveSkins = [...state.appliedStoveSkins.filter((assignment) => !validIds.includes(assignment.furnitureId)),
+      ...validIds.map((furnitureId) => ({ furnitureId, skinId }))];
+    const geometryState = { ...state, appliedStoveSkins };
+    for (const id of validIds) {
+      const stove = state.furniture.find((item) => item.id === id)!;
+      const cells = furnitureCells(stove, geometryState);
+      const blocked = cells.some((cell) => cell.x < 0 || cell.y < 0 || cell.x >= state.width || cell.y >= state.height ||
+        state.furniture.some((other) => other.id !== id && furnitureCells(other, geometryState).some((occupied) => occupied.x === cell.x && occupied.y === cell.y)) ||
+        [...state.employees, ...state.customers].some((actor) => actor.position.x === cell.x && actor.position.y === cell.y));
+      if (blocked) return { ok: false, reason: 'Для плиты 1×2 нужны две свободные клетки' };
+    }
+  }
   const actor = skin.kind === 'chef' || skin.kind === 'waiter';
   const list: (ActorSkinAssignment | FurnitureSkinAssignment)[] = actor ? actorAssignments(state, skin.kind) : furnitureAssignments(state, skin.kind);
   let ratingDelta = 0;

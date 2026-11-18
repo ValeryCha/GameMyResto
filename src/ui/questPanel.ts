@@ -1,6 +1,8 @@
 import './questPanel.css';
 import { QUESTS } from '../content/quests';
 import { experienceThreshold } from '../simulation/progression';
+import { getHudModel } from '../simulation/selectors';
+import { QUEUE_LIMIT } from '../simulation/queue';
 import type { GameState } from '../simulation/types';
 import { createIcon, setButtonIcon, type IconName } from './icons';
 
@@ -81,9 +83,25 @@ export function createQuestPanel(onClose?: () => void) {
       rating.replaceChildren();
       const ratingTitle = document.createElement('strong');
       ratingTitle.append(createIcon('rating'), document.createTextNode(`Рейтинг: ${Math.round(state.popularity)}`));
+      const model = getHudModel(state);
       const details = document.createElement('span');
       details.textContent = `Декорации: +${Math.round(state.decorationRatingBonus)} · Обслуживание: ${Math.round(state.popularity - state.decorationRatingBonus)}`;
-      rating.append(ratingTitle, details);
+      const trend = document.createElement('span');
+      trend.textContent = `Тренд за 60 тиков: ${model.ratingTrend} ${model.ratingDelta > 0 ? '+' : ''}${model.ratingDelta} · ${model.ratingReason}`;
+      const guests = document.createElement('span');
+      guests.textContent = `Места: ${model.occupiedSeats} занято / ${model.capacity} · Очередь: ${model.queue}/${QUEUE_LIMIT} · Поток: ${model.arrivalsPer60.toFixed(1)} приход / ${model.throughputPer60.toFixed(1)} обслуж.`;
+      const team = document.createElement('span');
+      team.textContent = `Официанты: ${model.team.waiters}/5 · Стойки: ${model.team.counters}/5 · Повара: ${model.team.chefs}/3 · Плиты: ${model.team.stoves}/3`;
+      const upgrade = document.createElement('span');
+      upgrade.className = 'progress-upgrade-hint';
+      upgrade.textContent = model.upgrade.text;
+      rating.append(ratingTitle, details, trend, guests, team, upgrade);
+      if (state.peakState.last) {
+        const peak = document.createElement('span');
+        const result = state.peakState.last;
+        peak.textContent = `Последний пик: обслужено ${result.served} · недовольных ${result.unhappy} · сервис ${Math.round(result.serviceRatio * 100)}% · +${result.bonusCoins} монет, +${result.bonusXP} опыта`;
+        rating.append(peak);
+      }
       const activeQuest = QUESTS.find((quest) => quest.level === state.level && !state.completedQuestIds.includes(quest.id));
       for (const row of rows) {
         const completed = state.completedQuestIds.includes(row.id);

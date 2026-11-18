@@ -12,6 +12,17 @@ describe('безопасное перемещение', () => {
     expect(actor.position).not.toEqual({ x: 2, y: 3 });
   });
 
+  it('персонал проходит сквозь других сотрудников, но не сквозь гостей', () => {
+    const state = createGame();
+    const chef = state.employees[0];
+    state.employees.push({ id: 'waiter', role: 'waiter', position: { x: 2, y: 3 }, energy: 100 });
+    expect(moveToward(state, chef, { x: 2, y: 4 })).toBe('moving');
+    expect(chef.position).toEqual({ x: 2, y: 3 });
+    state.customers.push({ id: 'guest', position: { x: 2, y: 4 }, state: 'queueWaiting', patience: 300 });
+    expect(moveToward(state, chef, { x: 2, y: 4 })).toBe('blocked');
+    expect(chef.position).toEqual({ x: 2, y: 3 });
+  });
+
   it('не телепортирует при заблокированной цели', () => {
     const state = createGame();
     const actor: Customer = { id: 'g', position: { x: 0, y: 6 }, state: 'waiting', patience: 300 };

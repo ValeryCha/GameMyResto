@@ -1,7 +1,7 @@
 import { DISHES } from '../content/dishes';
 import { loyaltyItemById } from '../content/loyalty';
 import { chooseGuestAction } from './ai';
-import { findPath, isWalkable, samePoint } from './grid';
+import { findPath, furnitureCells, isWalkable, samePoint } from './grid';
 import { moveActor } from './movement';
 import { nextRandom } from './random';
 import { findSeat, isSeatCurrent } from './seating';
@@ -10,6 +10,9 @@ import { createGuestOrder, settleOrder } from './orders';
 import { createAppearance } from '../render3d/appearance';
 import { arrivalRate, patienceMultiplier } from './guestFlow';
 import { cookingProgress, waiterMovementSteps } from './staff';
+import { counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
+import { counterDeliveryInterval, kitchenDistance, nearestCounterForStove, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
+import { transitionOrder } from './orderDiagnostics';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
 import type { Customer, Employee, Furniture, GameState, Order, Point } from './types';
@@ -17,25 +20,52 @@ import type { Customer, Employee, Furniture, GameState, Order, Point } from './t
 const DIRECTIONS: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
 
 function adjacentCells(state: GameState, item: Furniture): Point[] {
-  return DIRECTIONS.map((direction) => ({ x: item.position.x + direction.x, y: item.position.y + direction.y }))
-    .filter((point) => isWalkable(state, point));
+  const unique = new Map<string, Point>();
+  for (const cell of furnitureCells(item, state)) for (const direction of DIRECTIONS) {
+    const point = { x: cell.x + direction.x, y: cell.y + direction.y };
+    if (isWalkable(state, point)) unique.set(`${point.x},${point.y}`, point);
+  }
+  return [...unique.values()];
 }
 
-function occupiedCells(state: GameState, actor: { id?: string }): Point[] {
-  return [...state.employees, ...state.customers]
-    .filter((other) => other.id !== actor.id && !('state' in other && other.state === 'queueWaiting'))
+function occupiedCells(state: GameState, actor: { id?: string; role?: string }): Point[] {
+  // Коллизии между сотрудниками отключены; гости остаются препятствием для всех.
+  return (actor.role ? state.customers : [...state.employees, ...state.customers] as (Employee | Customer)[])
+    .filter((other) => other.id !== actor.id)
     .map((other) => other.position);
 }
 
-function routeTo(state: GameState, actor: { id?: string; position: Point }, target: Point): Point[] {
+function routeTo(state: GameState, actor: { id?: string; role?: string; position: Point }, target: Point): Point[] {
   return samePoint(actor.position, target) ? [] : findPath(state, actor.position, target, occupiedCells(state, actor));
 }
 
-function nearestCell(state: GameState, actor: { id?: string; position: Point }, item: Furniture): Point | undefined {
+function nearestCell(state: GameState, actor: { id?: string; role?: string; position: Point }, item: Furniture): Point | undefined {
   return adjacentCells(state, item)
     .map((point) => ({ point, path: routeTo(state, actor, point) }))
     .filter((candidate) => candidate.path.length > 0 || samePoint(actor.position, candidate.point))
     .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+}
+
+function chefRouteTo(state: GameState, chef: Employee, target: Point, stove: Furniture): Point[] {
+  if (!withinChefRange(state, target, stove)) return [];
+  if (samePoint(chef.position, target)) return [];
+  const outsideKitchen: Point[] = [];
+  for (let y = 0; y < state.height; y += 1) {
+    for (let x = 0; x < state.width; x += 1) {
+      const point = { x, y };
+      // Повар перемещается только в рабочей зоне собственной плиты.
+      if (!withinChefRange(state, point, stove)) outsideKitchen.push(point);
+    }
+  }
+  return findPath(state, chef.position, target, [...occupiedCells(state, chef), ...outsideKitchen]);
+}
+
+function moveChef(state: GameState, chef: Employee, target: Point, stove: Furniture): 'arrived' | 'moving' | 'blocked' {
+  if (samePoint(chef.position, target)) return 'arrived';
+  const path = chefRouteTo(state, chef, target, stove);
+  if (!path.length) return 'blocked';
+  chef.position = { ...path[0] };
+  return samePoint(chef.position, target) ? 'arrived' : 'moving';
 }
 
 function entrance(state: GameState): Point {
@@ -84,9 +114,10 @@ function clearEntrance(state: GameState, guest: Customer): boolean {
 }
 
 function clearQueuedEntrance(state: GameState, guest: Customer): void {
+  const atDoor = samePoint(guest.position, entrance(state));
   clearEntrance(state, guest);
   guest.state = 'queueWaiting';
-  guest.target = undefined;
+  if (atDoor) guest.target = undefined;
 }
 
 function placeInQueue(state: GameState, guest: Customer): void {
@@ -94,7 +125,17 @@ function placeInQueue(state: GameState, guest: Customer): void {
   clearQueuedEntrance(state, guest);
 }
 
+function cancelGuestOrder(state: GameState, guest: Customer): void {
+  const order = state.orders.find((item) => item.customerId === guest.id);
+  if (!order) return;
+  const assignedEmployee = state.employees.find((employee) => employee.id === order.assignedTo);
+  if (assignedEmployee?.taskId === order.id) assignedEmployee.taskId = undefined;
+  state.orders = state.orders.filter((item) => item.id !== order.id);
+  guest.orderId = undefined;
+}
+
 function unhappyExit(state: GameState, guest: Customer): void {
+  cancelGuestOrder(state, guest);
   guest.state = 'leaving';
   guest.target = exitTarget(state, guest);
   guest.seatId = undefined;
@@ -135,8 +176,33 @@ function spawnCustomer(state: GameState): boolean {
   return true;
 }
 
+function wanderQueuedGuest(state: GameState, guest: Customer): void {
+  if (state.tick < (guest.actionUntil ?? 0)) return;
+  if (guest.target) {
+    const movement = moveActor(state, guest, guest.target, 1);
+    if (movement === 'moving') return;
+    guest.target = undefined;
+    guest.actionUntil = state.tick + 2;
+    return;
+  }
+  const door = entrance(state);
+  const occupied = occupiedCells(state, guest);
+  // Небольшой детерминированный выбор клетки: очередь гуляет по залу, не толпится у двери.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const point = { x: Math.floor(nextRandom(state) * state.width), y: Math.floor(nextRandom(state) * state.height) };
+    if (kitchenDistance(point, door) <= 2 || samePoint(point, guest.position) || !isWalkable(state, point) ||
+      occupied.some((other) => samePoint(point, other)) || !routeTo(state, guest, point).length) continue;
+    guest.target = point;
+    moveActor(state, guest, point, 1);
+    return;
+  }
+  guest.actionUntil = state.tick + 2;
+}
+
 function updateCustomer(state: GameState, guest: Customer): void {
   if (guest.state === 'leaving') {
+    // Уход отменяет выдачу сразу, даже если дорога к двери временно занята.
+    cancelGuestOrder(state, guest);
     if (moveActor(state, guest, guest.target ?? entrance(state), 2, true) === 'arrived') {
       state.customers = state.customers.filter((item) => item.id !== guest.id);
       state.orders = state.orders.filter((order) => order.customerId !== guest.id);
@@ -148,6 +214,7 @@ function updateCustomer(state: GameState, guest: Customer): void {
     clearQueuedEntrance(state, guest);
     if (!advanceQueuedGuest(state, guest, exitTarget(state, guest))) return;
     if (state.guestQueue[0] === guest.id && reserveSeat(state, guest)) seatQueuedGuest(state, guest);
+    else wanderQueuedGuest(state, guest);
     return;
   }
 
@@ -261,31 +328,114 @@ function orderFor(state: GameState, employee: Employee): Order | undefined {
   return state.orders.find((order) => order.id === employee.taskId);
 }
 
-function updateChef(state: GameState, chef: Employee): void {
-  let order = orderFor(state, chef);
-  if (!order || !['waitingCook', 'cooking'].includes(order.state)) {
-    chef.taskId = undefined;
-    order = state.orders.find((item) => item.state === 'waitingCook' &&
-      !state.employees.some((employee) => employee.id !== chef.id && employee.taskId === item.id));
-    if (!order) return;
-    chef.taskId = order.id;
+function updateKitchenOrders(state: GameState): void {
+  const chefs = state.employees.filter((employee) => employee.role === 'chef');
+  const freeAssignedStove = () => chefs.map((chef) => stoveForChef(state, chef)).find((stove) => stove &&
+    !state.orders.some((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id));
+  for (const queued of state.orders.filter((item) => item.state === 'waitingCook' && !item.stoveId)) {
+    const stove = freeAssignedStove();
+    if (!stove) break;
+    queued.stoveId = stove.id;
+    queued.chefId = chefs.find((chef) => chef.stoveId === stove.id)?.id;
   }
-  const stove = state.furniture.find((item) => item.kind === 'stove');
-  if (!stove) return;
-  const target = nearestCell(state, chef, stove);
-  if (!target) return;
-  if (moveActor(state, chef, target) !== 'arrived') return;
-  if (order.state === 'waitingCook') order.state = 'cooking';
-  order.progress += cookingProgress(state.upgrades.cooking);
-  const dish = DISHES.find((item) => item.id === order!.dishId) ?? DISHES[0];
-  if (order.progress >= dish.cookSeconds && state.furniture.some((item) => item.kind === 'counter')) {
-    order.state = 'waitingDelivery';
-    chef.taskId = undefined;
+  // Прогресс начисляется один раз за тик и только на плите с закреплённым поваром.
+  for (const order of state.orders.filter((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId)) {
+    const chef = chefs.find((employee) => employee.stoveId === order.stoveId);
+    if (!chef) continue;
+    order.chefId = chef.id;
+    const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
+    if (order.progress < dish.cookSeconds) {
+      transitionOrder(order, 'cooking', state.tick);
+      order.progress = Math.min(dish.cookSeconds, order.progress + cookingProgress(state.upgrades.cooking));
+      order.deliveryProgress ??= 0;
+    }
   }
 }
 
+function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true): void {
+  const stove = stoveForChef(state, chef);
+  if (!stove) { chef.taskId = undefined; return; }
+  const stoveFree = () => !state.orders.some((item) =>
+    ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id);
+  const cooked = (order: Order) => {
+    const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
+    return order.state === 'cooking' && order.stoveId === stove.id && order.progress >= dish.cookSeconds;
+  };
+  let activeOrder = orderFor(state, chef);
+  if (activeOrder && activeOrder.stoveId !== stove.id) { chef.taskId = undefined; activeOrder = undefined; }
+  let deliveryCredit = allowExtraDelivery ? 1 / counterDeliveryInterval(state) : Math.min(1, 1 / counterDeliveryInterval(state));
+  while (deliveryCredit > 0) {
+    const current = orderFor(state, chef);
+    const order = current && cooked(current) ? current : state.orders.find((candidate) => cooked(candidate) &&
+      !state.employees.some((other) => other.id !== chef.id && other.role === 'chef' && other.taskId === candidate.id));
+    if (!order) break;
+    chef.taskId = order.id;
+    const counter = nearestCounterForStove(state, stove);
+    if (!counter) { chef.taskId = undefined; return; }
+    const nearby = kitchenDistance(chef.position, counter.position) === 1 && withinChefRange(state, chef.position, stove);
+    const target = adjacentCells(state, counter)
+      .filter((point) => withinChefRange(state, point, stove))
+      .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+    if (!nearby) {
+      const movement = target ? moveChef(state, chef, target, stove) : 'blocked';
+      if (movement === 'blocked') chef.taskId = undefined;
+      if (movement !== 'arrived') return;
+    }
+    order.deliveryProgress = (order.deliveryProgress ?? 0) + deliveryCredit;
+    if (order.deliveryProgress < 1) return;
+    deliveryCredit = order.deliveryProgress - 1;
+    transitionOrder(order, 'waitingDelivery', state.tick);
+    order.counterId = counter.id;
+    order.deliveryProgress = 0;
+    chef.taskId = undefined;
+  }
+
+  const handoff = state.orders.find((item) => item.state === 'takingOrder' && item.chefId === chef.id && item.assignedTo);
+  const waiter = handoff ? state.employees.find((employee) => employee.id === handoff.assignedTo) : undefined;
+  if (handoff && waiter) {
+    if (!stoveFree() || !withinChefRange(state, waiter.position, stove)) return;
+    const nearby = kitchenDistance(chef.position, waiter.position) === 1 && withinChefRange(state, chef.position, stove);
+    const meetingPoint = adjacentCells(state, { id: waiter.id, kind: 'plant', position: waiter.position, rotation: 0 })
+      .filter((point) => withinChefRange(state, point, stove))
+      .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+    if (nearby || (meetingPoint && moveChef(state, chef, meetingPoint, stove) === 'arrived')) {
+      transitionOrder(handoff, 'waitingCook', state.tick);
+      handoff.stoveId = stove.id;
+      handoff.assignedTo = undefined;
+      waiter.taskId = undefined;
+      chef.taskId = handoff.id;
+    }
+    return;
+  }
+
+  if (activeOrder && ['waitingCook', 'cooking'].includes(activeOrder.state)) {
+    const target = adjacentCells(state, stove)
+      .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+    if (target) moveChef(state, chef, target, stove);
+    return;
+  }
+  chef.taskId = undefined;
+}
+
 function parkIdleWaiter(state: GameState, waiter: Employee): void {
+  const counters = serviceCounters(state);
+  const waiters = state.employees.filter((employee) => employee.role === 'waiter');
   const kitchen = state.furniture.filter((item) => item.kind === 'stove' || item.kind === 'counter');
+  if (counters.length >= waiters.length && counters.length) {
+    const counter = counterForWaiter(state, waiter)!;
+    if (Math.abs(waiter.position.x - counter.position.x) + Math.abs(waiter.position.y - counter.position.y) === 1) return;
+    const target = nearestCell(state, waiter, counter);
+    // При отдельной стойке официант ждёт рядом с ней, а не разбредается по залу.
+    if (target) moveActor(state, waiter, target, waiterMovementSteps(waiter, state.upgrades.waiter));
+    return;
+  }
+  // При дефиците стоек оставляем проходы кухни свободными для повара и активных заказов.
   const nearKitchen = kitchen.some((item) => Math.abs(item.position.x - waiter.position.x) + Math.abs(item.position.y - waiter.position.y) <= 2);
   if (!nearKitchen) return;
   const occupied = occupiedCells(state, waiter);
@@ -305,7 +455,7 @@ function parkIdleWaiter(state: GameState, waiter: Employee): void {
 function updateWaiter(state: GameState, waiter: Employee): void {
   let order = orderFor(state, waiter);
   let guest = order ? state.customers.find((item) => item.id === order!.customerId) : undefined;
-  if (order?.state === 'waitingDelivery' && (!guest || guest.state === 'leaving')) {
+  if (order && order.state !== 'delivered' && (!guest || guest.state === 'leaving')) {
     order.assignedTo = undefined;
     order.pickedUp = false;
     waiter.taskId = undefined;
@@ -313,9 +463,13 @@ function updateWaiter(state: GameState, waiter: Employee): void {
   }
   if (!order || order.state === 'delivered') {
     waiter.taskId = undefined;
-    order = state.orders.find((item) => item.state === 'waitingDelivery' &&
+    const homeCounter = counterForWaiter(state, waiter);
+    const available = state.orders.filter((item) => ['waitingWaiter', 'waitingDelivery'].includes(item.state) &&
       state.customers.some((customer) => customer.id === item.customerId && customer.state !== 'leaving') &&
       !state.employees.some((employee) => employee.id !== waiter.id && employee.taskId === item.id));
+    // Своя стойка имеет приоритет, но любой свободный официант может помочь остальным.
+    order = available.find((item) => item.state === 'waitingDelivery' && item.counterId === homeCounter?.id) ??
+      available.find((item) => item.state === 'waitingWaiter') ?? available[0];
     if (!order) {
       parkIdleWaiter(state, waiter);
       return;
@@ -324,36 +478,80 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     order.assignedTo = waiter.id;
     guest = state.customers.find((item) => item.id === order!.customerId);
   }
-  const counters = state.furniture.filter((item) => item.kind === 'counter');
-  const waiterIndex = state.employees.filter((employee) => employee.role === 'waiter').findIndex((employee) => employee.id === waiter.id);
-  const counter = counters[waiterIndex % counters.length];
-  if (!counter || !guest) return;
-  const pickup = nearestCell(state, waiter, counter);
-  if (!pickup) return;
-  const atCounter = Math.abs(waiter.position.x - counter.position.x) + Math.abs(waiter.position.y - counter.position.y) === 1;
+  if (!guest) return;
   const steps = waiterMovementSteps(waiter, state.upgrades.waiter);
+  const guestTarget = () => {
+    const chair = state.furniture.find((item) => item.id === guest!.seatId);
+    return chair
+      ? adjacentCells(state, chair)
+        .filter((point) => !samePoint(point, guest!.position))
+        .map((point) => ({ point, path: routeTo(state, waiter, point) }))
+        .filter((candidate) => candidate.path.length > 0 || samePoint(waiter.position, candidate.point))
+        .sort((a, b) => a.path.length - b.path.length)[0]?.point
+      : nearestCell(state, waiter, { id: guest!.id, kind: 'plant', position: guest!.position, rotation: 0 });
+  };
+
+  if (order.state === 'waitingWaiter') {
+    const target = guestTarget();
+    if (target && moveActor(state, waiter, target, steps) === 'arrived') {
+      transitionOrder(order, 'takingOrder', state.tick);
+    }
+    return;
+  }
+
+  if (order.state === 'takingOrder') {
+    let chef = state.employees.find((employee) => employee.id === order.chefId && employee.role === 'chef');
+    if (!chef) {
+      chef = state.employees.find((employee) => {
+        const stove = stoveForChef(state, employee);
+        return stove && !state.orders.some((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id);
+      });
+      order.chefId = chef?.id;
+    }
+    const stove = chef ? stoveForChef(state, chef) : undefined;
+    if (!chef || !stove) return;
+    const atChef = kitchenDistance(waiter.position, chef.position) === 1;
+    const target = adjacentCells(state, { id: chef.id, kind: 'plant', position: chef.position, rotation: 0 })
+      .filter((point) => withinChefRange(state, point, stove))
+      .map((point) => ({ point, path: routeTo(state, waiter, point) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(waiter.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+    const movement = target ? moveActor(state, waiter, target, steps) : 'blocked';
+    if ((!atChef || !withinChefRange(state, waiter.position, stove)) && movement === 'blocked') {
+      // Неподвижный сотрудник не должен навсегда закрывать единственный коридор к повару.
+      const occupied = occupiedCells(state, waiter);
+      const detour = DIRECTIONS
+        .map((direction) => ({ x: waiter.position.x + direction.x, y: waiter.position.y + direction.y }))
+        .filter((point) => isWalkable(state, point) && !occupied.some((other) => samePoint(point, other)))
+        .sort((a, b) => kitchenDistance(a, chef.position) - kitchenDistance(b, chef.position))[0];
+      if (detour) moveActor(state, waiter, detour, 1);
+    }
+    return;
+  }
+
   if (!order.pickedUp) {
+    const counter = ensureOrderCounter(state, order);
+    if (!counter) return;
+    const pickup = nearestCell(state, waiter, counter);
+    if (!pickup) return;
+    const atCounter = Math.abs(waiter.position.x - counter.position.x) + Math.abs(waiter.position.y - counter.position.y) === 1;
     if (!atCounter) {
       moveActor(state, waiter, pickup, steps);
       return;
     }
     order.pickedUp = true;
   }
-  const chair = state.furniture.find((item) => item.id === guest.seatId);
-  const target = chair
-    ? adjacentCells(state, chair)
-      .filter((point) => !samePoint(point, guest!.position))
-      .map((point) => ({ point, path: routeTo(state, waiter, point) }))
-      .filter((candidate) => candidate.path.length > 0 || samePoint(waiter.position, candidate.point))
-      .sort((a, b) => a.path.length - b.path.length)[0]?.point
-    : nearestCell(state, waiter, { id: guest.id, kind: 'plant', position: guest.position, rotation: 0 });
+  // После взятия блюда стойка больше не участвует в маршруте.
+  const target = guestTarget();
   if (target && moveActor(state, waiter, target, steps) === 'arrived') {
-    order.state = 'delivered';
+    transitionOrder(order, 'delivered', state.tick);
     waiter.taskId = undefined;
   }
 }
 
 export function advanceSimulation(state: GameState, steps = 1): void {
+  // Редактор ставит на паузу весь мир: гости, заказы, очередь, таймеры и персонал.
+  if (state.editorMode) return;
   for (let i = 0; i < steps; i += 1) {
     state.tick += 1;
     beginPeak(state);
@@ -367,10 +565,15 @@ export function advanceSimulation(state: GameState, steps = 1): void {
     }
     for (const employee of state.employees) employee.energy = Math.max(0, employee.energy - 0.002);
     for (const guest of [...state.customers]) updateCustomer(state, guest);
-    const chef = state.employees.find((employee) => employee.role === 'chef');
-    if (chef) updateChef(state, chef);
+    // Готовка общая для кухни, а перемещение и выдача — независимы для каждого повара.
+    synchronizeChefStoves(state);
+    updateKitchenOrders(state);
+    const chefs = state.employees.filter((employee) => employee.role === 'chef');
+    chefs.forEach((chef, index) => updateChef(state, chef, index === chefs.length - 1));
     for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) updateWaiter(state, waiter);
     finishPeak(state);
     processProgression(state);
+    state.ratingHistory.push({ tick: state.tick, value: state.popularity });
+    state.ratingHistory = state.ratingHistory.filter((point) => point.tick >= state.tick - 60);
   }
 }

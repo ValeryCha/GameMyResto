@@ -17,20 +17,31 @@ import { loyaltyBonus, paintingWallCells } from '../simulation/catalogDecoration
 import { inheritExpandedWallpapers } from '../simulation/expansion';
 import { normalizePeakState } from '../simulation/peak';
 import { normalizeQueueState } from '../simulation/queue';
+import { ensureOrderCounter } from '../simulation/counterService';
+import { synchronizeChefStoves } from '../simulation/kitchen';
 
 const CURRENT_STATE_VERSION = 2;
 
 export function normalizeState(state: GameState): GameState {
+  // Загрузка всегда начинается в игровом режиме, даже для старых/внешних сейвов.
+  delete state.editorMode;
   if ((state.version ?? 1) < CURRENT_STATE_VERSION) {
     state.popularity = (state.popularity ?? 50) * 10;
     state.arrivalProgress = 0;
     state.version = CURRENT_STATE_VERSION;
   }
   state.popularity = Math.max(0, Math.min(1000, Number.isFinite(state.popularity) ? state.popularity : 500));
+  // История не приходит из сейва: прошлый тренд после загрузки не выдумывается.
+  state.ratingHistory = [{ tick: state.tick ?? 0, value: state.popularity }];
   state.randomSeed ??= 123456789; state.guestLimit ??= 7; state.level ??= 1; state.purchasedGuestSlots ??= 0;
   state.purchasedGuestSlots = Math.max(0, Math.min(10, Math.floor(state.purchasedGuestSlots)));
   state.maxGuestLimit = Math.max(state.maxGuestLimit ?? 0, state.guestLimit); state.furnitureInventory ??= {};
+  // Старые сейвы могли содержать до пяти плит: сохраняем первые три и не теряем остальную мебель.
+  const keptStoves = state.furniture.filter((item) => item.kind === 'stove').slice(0, 3);
+  state.furniture = state.furniture.filter((item) => item.kind !== 'stove' || keptStoves.includes(item));
   for (const [kind, amount] of Object.entries(state.furnitureInventory)) state.furnitureInventory[kind as keyof typeof state.furnitureInventory] = Math.max(0, Math.min(99, Math.floor(Number.isFinite(amount) ? amount : 0)));
+  state.furnitureInventory.stove = Math.min(Math.max(0, 3 - keptStoves.length), state.furnitureInventory.stove ?? 0);
+  synchronizeChefStoves(state);
   state.ownedWallpapers ??= {};
   for (const [id, amount] of Object.entries(state.ownedWallpapers)) {
     if (!wallpaperById(id)) delete state.ownedWallpapers[id];
@@ -145,7 +156,16 @@ export function normalizeState(state: GameState): GameState {
     customer.foodWait ??= 120; const appearance = appearanceForId(customer.id); customer.bodyType ??= appearance.bodyType; customer.hairStyle ??= appearance.hairStyle;
     customer.hairColor ??= appearance.hairColor; customer.skinColor ??= appearance.skinColor; customer.outfitColor ??= appearance.outfitColor;
   }
-  for (const order of state.orders) { order.dishId ??= 'soup'; order.desired ??= false; }
+  const stoveIds = new Set(state.furniture.filter((item) => item.kind === 'stove').map((item) => item.id));
+  for (const order of state.orders) {
+    order.dishId ??= 'soup';
+    order.desired ??= false;
+    order.deliveryProgress = Number.isFinite(order.deliveryProgress) ? Math.max(0, order.deliveryProgress!) : 0;
+    order.stateChangedAt = Number.isFinite(order.stateChangedAt)
+      ? Math.max(0, Math.min(state.tick, order.stateChangedAt!)) : state.tick;
+    if (order.stoveId && !stoveIds.has(order.stoveId)) order.stoveId = undefined;
+    if (order.state === 'waitingDelivery') ensureOrderCounter(state, order);
+  }
   state.orders = state.orders.filter((order) => order.state !== 'delivered' || state.customers.some((customer) => customer.id === order.customerId));
   normalizeQueueState(state);
   normalizePeakState(state);

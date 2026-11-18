@@ -7,7 +7,7 @@ import { placeFurniture } from '../src/simulation/commands';
 
 function equipRestaurant(state: ReturnType<typeof createGame>): void {
   hireWaiter(state);
-  placeFurniture(state, 'counter', { x: 2, y: 1 });
+  placeFurniture(state, 'counter', { x: 3, y: 1 });
 }
 
 function addServiceWithoutRating(state: ReturnType<typeof createGame>): void {
@@ -16,6 +16,14 @@ function addServiceWithoutRating(state: ReturnType<typeof createGame>): void {
 }
 
 describe('advanceSimulation', () => {
+  it('хранит историю рейтинга только за текущее окно 60 тиков', () => {
+    const state = createGame();
+    advanceSimulation(state, 61);
+    expect(state.ratingHistory).toHaveLength(61);
+    expect(state.ratingHistory[0].tick).toBe(1);
+    expect(state.ratingHistory.at(-1)).toEqual({ tick: 61, value: state.popularity });
+  });
+
   it('гость без места уходит из очереди после истечения терпения и снижает рейтинг', () => {
     const state = createGame();
     state.furniture = state.furniture.filter((item) => !['chair', 'table'].includes(item.kind));
@@ -67,10 +75,10 @@ describe('advanceSimulation', () => {
     expect(state.customers.some((guest) => guest.id === 'customer-1')).toBe(false);
   });
 
-  it('не исчезает готовый заказ без стойки и официанта', () => {
+  it('без официанта заказ остаётся у гостя и не попадает к повару', () => {
     const state = createGame();
     advanceSimulation(state, 80);
-    expect(state.orders.some((order) => order.state === 'cooking' && order.progress > 0)).toBe(true);
+    expect(state.orders.some((order) => order.state === 'waitingWaiter' && order.progress === 0)).toBe(true);
     expect(state.coins).toBe(1_000);
   });
 
@@ -104,8 +112,11 @@ describe('advanceSimulation', () => {
     const state = createGame();
     state.upgrades.cooking = 1;
     state.customers.push({ id: 'guest-cooking', position: { x: 5, y: 5 }, state: 'ordering', patience: 300, seatId: 'chair-1' });
-    advanceSimulation(state, 2);
+    advanceSimulation(state, 1);
     const order = state.orders[0];
+    expect(order.state).toBe('waitingWaiter');
+    order.state = 'waitingCook'; // Изолируем скорость повара от пути официанта.
+    advanceSimulation(state, 2);
     expect(order.state).toBe('cooking');
     expect(order.progress).toBeCloseTo(2 / 0.92);
   });

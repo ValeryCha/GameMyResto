@@ -52,8 +52,9 @@ export function createGuestOrder(state: GameState, guest: Customer): Order | und
   const order: Order = {
     id: `order-${guest.id}`,
     customerId: guest.id,
-    state: 'waitingCook',
+    state: 'waitingWaiter',
     progress: 0,
+    stateChangedAt: state.tick,
     dishId: selection.dish.id,
     desired: selection.desired,
   };

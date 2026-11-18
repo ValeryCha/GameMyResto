@@ -33,6 +33,7 @@ const rows: Record<FurnitureSkinKind, Row[]> = {
     ['grillStove', 'Профессиональный гриль', 1600, 10, '#3f4749', '#171b1d', '#df7045', 'modern'],
     ['stoneOven', 'Каменная печь', 4000, 18, '#91877a', '#524c45', '#e8b85d', 'classic'],
     ['futureStove', 'Футуристическая плита', 9000, 25, '#304c62', '#182733', '#64e1dc', 'royal'],
+    ['industrialStove', 'Индустриальная плита 1×2', 12000, 30, '#54656b', '#202a2e', '#f2b84b', 'modern'],
   ],
   counter: [
     ['woodCounter', 'Деревянная стойка', 150, 1, '#8b5136', '#57392e', '#fff0cf', 'classic'],

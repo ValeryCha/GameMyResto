@@ -47,7 +47,7 @@ describe('throughput', () => {
     expect(serviceRate(state)).toBeCloseTo(0.92 / (10 * 0.65));
   });
 
-  it('масштабирует кухню и выдачу не более чем до пяти линий', () => {
+  it('ограничивает кухню тремя плитами и выдачу пятью линиями', () => {
     const state = createGame();
     for (let index = 0; index < 7; index += 1) {
       state.employees.push(
@@ -59,7 +59,7 @@ describe('throughput', () => {
         { id: `counter-${index}`, kind: 'counter', position: { x: 0, y: 0 }, rotation: 0 },
       );
     }
-    expect(kitchenRate(state)).toBeCloseTo(5 / 6);
+    expect(kitchenRate(state)).toBeCloseTo(3 / 6);
     expect(serviceRate(state)).toBeCloseTo(0.46);
   });
 

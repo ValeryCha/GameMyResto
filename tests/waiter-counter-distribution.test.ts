@@ -23,7 +23,7 @@ function createBusyWaiterScene(counterCount = 4, waiterCount = 5): GameState {
       { id: `chair-${index + 1}`, kind: 'chair', position: { x: 10, y: y + 1 }, rotation: 0 },
     );
     state.customers.push({ id: `guest-${index + 1}`, position: { x: 10, y: y + 1 }, state: 'waitingFood', patience: 10_000, foodWait: 10_000, seatId: `chair-${index + 1}`, orderId: `order-${index + 1}` });
-    state.orders.push({ id: `order-${index + 1}`, customerId: `guest-${index + 1}`, state: 'waitingDelivery', progress: 6, dishId: 'soup' });
+    state.orders.push({ id: `order-${index + 1}`, customerId: `guest-${index + 1}`, state: 'waitingDelivery', progress: 6, dishId: 'soup', counterId: `counter-${(index % counterCount) + 1}` });
   }
   return state;
 }
@@ -62,6 +62,34 @@ function runIdleRegression(state: GameState): { maxIdle: Record<string, number>;
 }
 
 describe('распределение официантов по стойкам', () => {
+  it('пять официантов забирают блюда со своих пяти стоек, включая 3–5', () => {
+    const state = createBusyWaiterScene(5, 5);
+
+    advanceSimulation(state, 1);
+
+    expect(state.orders.map((order) => order.counterId)).toEqual([
+      'counter-1', 'counter-2', 'counter-3', 'counter-4', 'counter-5',
+    ]);
+    for (let index = 0; index < 5; index += 1) {
+      const waiter = state.employees[index];
+      const order = state.orders[index];
+      expect(waiter.taskId).toBe(order.id);
+      expect(order.counterId).toBe(`counter-${index + 1}`);
+      expect(waiter.position).toEqual({ x: 2, y: 1 + index * 3 });
+    }
+  });
+
+  it('не взятое блюдо переносится на другую стойку после удаления исходной', () => {
+    const state = createBusyWaiterScene(5, 5);
+    advanceSimulation(state, 1);
+    state.furniture = state.furniture.filter((item) => item.id !== 'counter-3');
+
+    advanceSimulation(state, 1);
+
+    expect(state.orders[2].counterId).not.toBe('counter-3');
+    expect(state.orders[2].counterId).toMatch(/^counter-/);
+  });
+
   it('пять официантов работают с четырьмя стойками при непрерывной очереди 300 тиков', () => {
     const state = createBusyWaiterScene();
     const metrics = Object.fromEntries(state.employees.map((waiter) => [waiter.id, { idle: 0, moving_to_counter: 0, carrying_order: 0, delivering: 0, waiting: 0 }]));
@@ -101,7 +129,7 @@ describe('распределение официантов по стойкам', 
 
     for (let index = 0; index < 5; index += 1) {
       const waiter = state.employees.find((item) => item.id === `waiter-${index + 1}`)!;
-      expect(waiter.position).toEqual(index < 4 ? { x: 2, y: 1 + index * 3 } : { x: 3, y: 11 });
+      expect(waiter.position).toEqual(index < 4 ? { x: 2, y: 1 + index * 3 } : { x: 2, y: 12 });
       expect(waiter.taskId).toBe(`order-${index + 1}`);
     }
   });
@@ -139,18 +167,23 @@ describe('распределение официантов по стойкам', 
     expect(waiter(1).position).toEqual({ x: 2, y: 1 });
     expect(waiter(2).position).toEqual({ x: 2, y: 4 });
     expect(waiter(3).position).toEqual({ x: 2, y: 7 });
-    expect(waiter(4).position).toEqual({ x: 3, y: 8 });
-    expect(waiter(5).position).toEqual({ x: 3, y: 11 });
+    expect(waiter(4).position).toEqual({ x: 2, y: 9 });
+    expect(waiter(5).position).toEqual({ x: 2, y: 12 });
 
+    const assignedCounter = state.orders[3].counterId;
     state.furniture.push({ id: 'counter-4', kind: 'counter', position: { x: 1, y: 10 }, rotation: 0 });
     advanceSimulation(state, 1);
-    expect(waiter(4).position).toEqual({ x: 2, y: 9 });
+    // Уже приготовленное блюдо остаётся на своей стойке до выдачи.
+    expect(state.orders[3].counterId).toBe(assignedCounter);
+    advanceSimulation(state, 300);
+    expect(state.orders.every((order) => order.state === 'delivered'), JSON.stringify({ employees: state.employees, orders: state.orders })).toBe(true);
 
     const removalState = createBusyWaiterScene(3, 5);
     advanceSimulation(removalState, 1);
     removalState.furniture = removalState.furniture.filter((item) => item.id !== 'counter-2');
     advanceSimulation(removalState, 1);
-    expect(removalState.employees.find((item) => item.id === 'waiter-2')?.position).toEqual({ x: 1, y: 5 });
+    expect(removalState.orders.find((item) => item.id === 'order-2')?.counterId).not.toBe('counter-2');
+    expect(removalState.orders.find((item) => item.id === 'order-2')?.counterId).toMatch(/^counter-/);
     expect(removalState.orders.find((item) => item.id === 'order-2')?.pickedUp ?? false).toBe(false);
   });
 });

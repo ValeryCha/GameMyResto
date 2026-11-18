@@ -147,7 +147,21 @@ describe('очередь у входа', () => {
 
     expect(state.guestQueue).toEqual(['customer-1']);
     expect(state.customers[0].state).toBe('queueWaiting');
-    expect(state.customers[0].position).toEqual({ x: 1, y: 7 });
+    expect(state.customers[0].position).not.toEqual({ x: 0, y: 7 });
     expect(state.customers[0].queuePatience).toBeCloseTo(90 * (0.85 + 0.3 * 10 / 100));
+  });
+
+  it('ожидающие гости гуляют по залу и не остаются у двери', () => {
+    const state = createGame();
+    state.furniture = state.furniture.filter((item) => !['chair', 'table'].includes(item.kind));
+    const visited = new Set<string>();
+    for (let tick = 0; tick < 16; tick += 1) {
+      advanceSimulation(state, 1);
+      const guest = state.customers[0];
+      visited.add(`${guest.position.x},${guest.position.y}`);
+      expect(guest.state).toBe('queueWaiting');
+      expect(guest.position).not.toEqual({ x: 0, y: 7 });
+    }
+    expect(visited.size).toBeGreaterThan(2);
   });
 });

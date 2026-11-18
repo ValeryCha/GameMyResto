@@ -12,11 +12,15 @@ function richGame() {
 }
 
 describe('скины мебели и персонала', () => {
-  it('содержит пять скинов для каждого из семи типов', () => {
-    for (const kind of ['table', 'tableDouble', 'chair', 'stove', 'counter', 'chef', 'waiter'] as const) {
+  it('содержит пять базовых скинов и дополнительную двухклеточную плиту', () => {
+    for (const kind of ['table', 'tableDouble', 'chair', 'counter', 'chef', 'waiter'] as const) {
       expect(FURNITURE_SKINS.filter((skin) => skin.kind === kind)).toHaveLength(5);
     }
-    expect(FURNITURE_SKINS).toHaveLength(35);
+    const stoves = FURNITURE_SKINS.filter((skin) => skin.kind === 'stove');
+    expect(stoves).toHaveLength(6);
+    expect(stoves.at(-1)).toMatchObject({ id: 'industrialStove', price: 12_000 });
+    expect(Math.max(...stoves.map((skin) => skin.price))).toBe(12_000);
+    expect(FURNITURE_SKINS).toHaveLength(36);
   });
 
   it('назначает разные скины отдельным столам и взимает полную цену повторно', () => {
