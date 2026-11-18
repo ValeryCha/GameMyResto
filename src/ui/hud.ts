@@ -127,9 +127,8 @@ export function createHud(callbacks: HudCallbacks) {
   peakResult.setAttribute('role', 'status');
   peakResult.setAttribute('aria-label', 'Итог пикового часа');
   const queueIndicator = document.createElement('div');
-  queueIndicator.className = 'hud-peak-result';
+  queueIndicator.className = 'hud-queue-indicator';
   queueIndicator.dataset.testid = 'guest-queue';
-  queueIndicator.style.top = '222px';
   queueIndicator.hidden = true;
   queueIndicator.setAttribute('aria-label', 'Очередь у входа');
   document.body.append(root, toast, peakBanner, peakResult, queueIndicator);
@@ -172,9 +171,6 @@ export function createHud(callbacks: HudCallbacks) {
         ? Math.ceil(Math.max(0, (firstQueued.queuePatience ?? 0) - (firstQueued.queueWaitedTicks ?? 0)))
         : 0;
       queueIndicator.textContent = `Очередь: ${state.guestQueue.length}/${QUEUE_LIMIT}${firstQueued ? ` · терпение первого: ${queuePatience} с` : ''}`;
-      queueIndicator.style.setProperty('top', diagnostics.hidden
-        ? '222px'
-        : `${Math.ceil(diagnostics.getBoundingClientRect().bottom + 8)}px`, 'important');
       const phase = ((state.tick % 180) + 180) % 180;
       if (state.peakState.current) {
         peakBanner.hidden = false;

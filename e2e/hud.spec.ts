@@ -7,7 +7,7 @@ test('HUD показывает места, поток, команду и сле�
   await expect(metrics).toHaveAttribute('open', '');
   await expect(metrics).toContainText(/Места: \d+ занято \/ 1 · Очередь: \d+\/5/);
   await expect(metrics).toContainText(/Поток: [\d.]+ приход \/ [\d.]+ обслуж\. за 60 тиков/);
-  await expect(metrics).toContainText('Официанты: 0/5 · Стойки: 0/5 · Повара: 1/5 · Плиты: 1/5');
+  await expect(metrics).toContainText('Официанты: 0/5 · Стойки: 0/5 · Повара: 1/3 · Плиты: 1/3');
   await expect(metrics).toContainText('Узкое звено');
   await expect(page.getByTestId('rating-trend')).toHaveAttribute('aria-label', /Тренд рейтинга за 60 тиков:/);
   await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
@@ -30,7 +30,7 @@ test('на узком экране подробности потока откр�
   await metrics.locator('summary').click();
   await expect(metrics).toHaveAttribute('open', '');
   await expect(metrics).toContainText('Поток:');
-  await expect(metrics).toContainText('Повара: 1/5');
+  await expect(metrics).toContainText('Повара: 1/3');
   const metricsBox = (await metrics.boundingBox())!;
   const peakBox = (await page.getByTestId('peak-banner').boundingBox())!;
   const queueBox = (await page.getByTestId('guest-queue').boundingBox())!;
