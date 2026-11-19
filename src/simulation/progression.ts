@@ -1,5 +1,6 @@
 import { DISHES } from '../content/dishes';
 import { QUESTS } from '../content/quests';
+import { processSideQuests } from './questProgress';
 import type { GameState } from './types';
 import { expandBounds } from './expansion';
 import { MAX_LEVEL, recalculateGuestLimit } from './guestLimits';
@@ -27,11 +28,13 @@ export function processProgression(state: GameState): void {
   ensureProgression(state);
   applyLevels(state);
   const quest = QUESTS.find((item) => item.level === state.level && !state.completedQuestIds.includes(item.id));
-  if (!quest || !quest.test(state)) return;
-  state.completedQuestIds.push(quest.id);
-  state.coins += quest.reward.coins;
-  state.experience += quest.reward.experience;
-  applyLevels(state);
+  if (quest && quest.test(state)) {
+    state.completedQuestIds.push(quest.id);
+    state.coins += quest.reward.coins;
+    state.experience += quest.reward.experience;
+    applyLevels(state);
+  }
+  processSideQuests(state);
 }
 
 export function availableDishes(state: GameState) {
