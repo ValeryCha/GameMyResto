@@ -36,13 +36,13 @@
 | **UI-7.1** | ✅ Accepted | Код | ui/hud.* | — | доработка HUD | Уменьшение плашек монет/рейтинга |
 | **UI-7.2** | ✅ Accepted | Код | render3d/*, ui/* | — | окна, карточки, обои, HUD | Текущий прогон у Kimi |
 | **LOGIC-B1** | ✅ Accepted | Bug-fix | simulation/*, e2e/* | — | простой официантов | Фикс: `find` → `filter`, распределение `waiterIndex % counters.length`. Тесты 5/5, 4/5, 5/3 зелёные. Тех. долг: `progression.spec.ts` смешивает прогрессию и обои. |
-| **LOGIC-1** | 🟡 Ready | Спека | docs/ | 4 новых md | аудит связности | Ждёт LOGIC-B1, версия 2 с лимитами 5/5 и поварами/плитами |
-| **LOGIC-2** | ⏳ Draft | Код | simulation/*, ui/* | — | пик (чаевые, метрика) | После LOGIC-1 |
-| **LOGIC-3** | ⏳ Draft | Код | simulation/*, render3d/* | — | очередь на вход | После LOGIC-2 |
-| **LOGIC-4** | ⏳ Draft | Код | simulation/*, ui/* | — | новая формула гостей | После LOGIC-3 |
+| **LOGIC-1** | ✅ Accepted | Спека | docs/ | 4 новых md | аудит связности | Ждёт LOGIC-B1, версия 2 с лимитами 5/5 и поварами/плитами |
+| **LOGIC-2** | ✅ Accepted | Код | simulation/*, ui/* | — | пик (чаевые, метрика) | После LOGIC-1 |
+| **LOGIC-3** | ✅ Accepted | Код | simulation/*, render3d/* | — | очередь на вход | После LOGIC-2 |
+| **LOGIC-4** | ✅ Accepted | Код | simulation/*, ui/* | — | новая формула гостей | После LOGIC-3 |
 | **LOGIC-5** | ⏳ Draft | Код | content/*, simulation/* | — | реструктуризация заданий | После LOGIC-4 |
 | **LOGIC-6** | ⏳ Draft | Код | ui/hud.* | — | новые метрики HUD | После LOGIC-5 |
-| **LOGIC-7** | ⏳ Draft | Код | simulation/*, content/*, ui/* | — | новые метрики HUD | После LOGIC-6 | айм поваров и плит, после LOGIC-1
+| **LOGIC-7** | ⏳ Draft | Код | simulation/*, content/*, ui/* | — | новые метрики HUD | После LOGIC-6 | найм поваров и плит, после LOGIC-1
 
 ---
 
