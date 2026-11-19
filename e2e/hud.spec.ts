@@ -18,6 +18,7 @@ test('HUD показывает места, поток, команду и сле�
   await page.waitForFunction(() => localStorage.getItem('moy-restoran:primary') !== null);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('moy-restoran:primary')!).state);
   expect(saved.ratingHistory).toBeUndefined();
+  await expect(page.getByText(/занято · свободно \d+ · лимит \d+/)).toBeVisible();
 });
 
 test('на узком экране подробности потока открываются по нажатию', async ({ page }) => {
