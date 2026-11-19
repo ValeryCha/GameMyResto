@@ -573,7 +573,7 @@ export function advanceSimulation(state: GameState, steps = 1): void {
     for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) updateWaiter(state, waiter);
     finishPeak(state);
     processProgression(state);
-    state.ratingHistory.push({ tick: state.tick, value: state.popularity });
+    (state.ratingHistory ??= []).push({ tick: state.tick, value: state.popularity });
     state.ratingHistory = state.ratingHistory.filter((point) => point.tick >= state.tick - 60);
   }
 }

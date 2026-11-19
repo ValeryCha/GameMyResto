@@ -16,7 +16,7 @@ test('пол покупается один раз, сохраняется и а�
   expect(state.coins).toBe(800);
   expect(state.activeFloorPattern).toBe('simpleTile');
   expect(state.ownedFloorPatterns).toEqual(['simpleTile']);
-  expect(state.decorationRatingBonus).toBe(1);
+  expect(state.decorationRatingBonus).toBe(10);
   await expect(shop.locator('[data-floor-id="simpleTile"]')).toHaveAttribute('aria-label', /Активен/);
   await page.screenshot({ path: 'artifacts/floor-shop-desktop.png' });
   await shop.getByRole('button', { name: 'Закрыть' }).click();

@@ -24,7 +24,7 @@ test('скин отдельного стула, картина и лояльно
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   await shop.locator('[data-shop-category="decorations"]').click();
   await shop.locator('[data-decoration-section="equipment"]').click();
-  await expect(shop.getByRole('region', { name: 'Оборудование', exact: true }).locator('[data-furniture-skin-id]')).toHaveCount(10);
+  await expect(shop.getByRole('region', { name: 'Оборудование', exact: true }).locator('[data-furniture-skin-id]')).toHaveCount(11);
   await shop.locator('[data-decoration-section="team"]').click();
   await expect(shop.getByRole('region', { name: 'Персонал', exact: true }).locator('[data-furniture-skin-id]')).toHaveCount(10);
 
