@@ -52,3 +52,23 @@ questBaseline: {
 completedSideQuestIds: string[];
 dailyQuestState: { date: string; id: string; progress: number; rewarded: boolean };
 peakQuestTotals: { servedTotal: number };
+
+
+## Backlog 6.1b → 6.2
+
+- **«Уютный ресторан»** — не найден в `src/content/quests.ts`. Спека §4
+  ссылается на него в dependsOn для `decor-painting` (и через него —
+  `decor-windows`, `decor-plant`, `decor-wallpapers`, `decor-skins-3`).
+  Сейчас `dependsOn` у этих квестов — `undefined`. Если появится главный
+  квест «Уютный ресторан» — вернуть dependsOn в 5 местах.
+- **«Первый рецепт»** — не найден в `src/content/quests.ts`. Спека §4
+  ссылается на него для `economy-cooking` и `menu-recipes-3`. Сейчас
+  `dependsOn: undefined`. Аналогично — вернуть при появлении.
+- **Косметика test 12** — изначальная версия падала бы даже при верной
+  реализации (обнуляла `completedSideQuestIds` вместо обхода dependsOn).
+  Заменена на `s.completedQuestIds = ['quest-1']`. Зафиксировано, чтобы
+  не повторять ошибку в 6.1c.
+- **`progression.ts` — line endings** — при `git add` был warning
+  `LF will be replaced by CRLF`. Не блокер (Windows), но при следующем
+  редактировании файла стоит проверить `.gitattributes` — может, стоит
+  зафиксировать `text=auto eol=crlf` для `.ts`.
