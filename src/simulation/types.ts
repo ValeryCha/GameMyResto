@@ -69,6 +69,33 @@ export interface GameState {
     current: PeakStats | null;
     last: PeakResult | null;
   };
+
+  questBaseline: {
+    servedTotal: number;
+    revenueTotal: number;
+    coins: number;
+    dishes: number;
+    skins: number;
+    wallpapers: number;
+    floors: number;
+    paintings: number;
+    windows: number;
+    waiters: number;
+    counters: number;
+    plants: number;
+    upgradeCooking: number;
+    upgradeWaiter: number;
+  };
+  completedSideQuestIds: string[];
+  dailyQuestState: {
+    date: string;
+    id: string;
+    progress: number;
+    rewarded: boolean;
+  };
+  peakQuestTotals: {
+    servedTotal: number;
+  };
   coins: number;
   experience: number;
   level: number;

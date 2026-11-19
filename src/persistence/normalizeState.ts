@@ -21,7 +21,24 @@ import { ensureOrderCounter } from '../simulation/counterService';
 import { synchronizeChefStoves } from '../simulation/kitchen';
 
 const CURRENT_STATE_VERSION = 2;
-
+function captureQuestBaseline(state: GameState): GameState['questBaseline'] {
+  return {
+    servedTotal: state.servedTotal ?? 0,
+    revenueTotal: state.revenueTotal ?? 0,
+    coins: state.coins ?? 0,
+    dishes: (state.unlockedDishIds ?? []).length,
+    skins: (state.ownedFurnitureSkins ?? []).length,
+    wallpapers: Object.keys(state.ownedWallpapers ?? {}).length,
+    floors: (state.ownedFloorPatterns ?? []).length,
+    paintings: (state.appliedPaintings ?? []).length,
+    windows: (state.appliedWindows ?? []).length,
+    waiters: state.employees.filter((e) => e.role === 'waiter').length,
+    counters: state.furniture.filter((f) => f.kind === 'counter').length,
+    plants: state.furniture.filter((f) => f.kind === 'plant').length,
+    upgradeCooking: state.upgrades?.cooking ?? 0,
+    upgradeWaiter: state.upgrades?.waiter ?? 0,
+  };
+}
 export function normalizeState(state: GameState): GameState {
   // Загрузка всегда начинается в игровом режиме, даже для старых/внешних сейвов.
   delete state.editorMode;
@@ -169,5 +186,10 @@ export function normalizeState(state: GameState): GameState {
   state.orders = state.orders.filter((order) => order.state !== 'delivered' || state.customers.some((customer) => customer.id === order.customerId));
   normalizeQueueState(state);
   normalizePeakState(state);
+  state.questBaseline ??= captureQuestBaseline(state);
+  state.completedSideQuestIds ??= [];
+  state.dailyQuestState ??= { date: '', id: '', progress: 0, rewarded: false };
+  state.peakQuestTotals ??= { servedTotal: 0 };
   processProgression(state); return state;
+
 }

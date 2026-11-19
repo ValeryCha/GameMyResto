@@ -4,6 +4,12 @@ export function createGame(): GameState {
   return {
     version: 2,
     peakState: { activePeakId: null, rewardedPeakIds: [], current: null, last: null },
+    questBaseline: { servedTotal: 0, revenueTotal: 0, coins: 0, dishes: 0, skins: 0,
+      wallpapers: 0, floors: 0, paintings: 0, windows: 0,
+      waiters: 0, counters: 0, plants: 0, upgradeCooking: 0, upgradeWaiter: 0, },
+    completedSideQuestIds: [],
+    dailyQuestState: { date: '', id: '', progress: 0, rewarded: false },
+    peakQuestTotals: { servedTotal: 0 },
     coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
     servedTotal: 0, revenueTotal: 0, satisfiedStreak: 0, desiredServedTotal: 0, unhappyTotal: 0,
     guestQueue: [], queueRejectedTotal: 0, queueTimeoutTotal: 0, queueSeatedTotal: 0, queueWaitTicksTotal: 0,
