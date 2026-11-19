@@ -6,6 +6,7 @@ import { createIcon, setButtonIcon, type IconName } from './icons';
 import { peakBottleneck } from '../simulation/peak';
 import { QUEUE_LIMIT } from '../simulation/queue';
 import type { PeakResult } from '../simulation/types';
+import { formatGuestsStat } from './hudFormat';
 
 interface HudCallbacks {
   onShop(): void;
@@ -142,7 +143,7 @@ export function createHud(callbacks: HudCallbacks) {
       const model = getHudModel(state);
       values.coins.textContent = String(model.coins);
       values.popularity.textContent = model.popularity;
-      values.guests.textContent = `${model.guests} · мест ${model.capacity}`;
+      values.guests.textContent = formatGuestsStat(model.guests, model.capacity);
       values.guests.parentElement!.title = `Планируемый поток: ${model.arrivalsPer60.toFixed(1)} гостей за 60 тиков`;
       ratingTrend.textContent = ` ${model.ratingTrend}`;
       ratingTrend.setAttribute('aria-label', `Тренд рейтинга за 60 тиков: ${model.ratingReason}`);
