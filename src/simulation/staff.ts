@@ -2,6 +2,7 @@ import type { Employee } from './types';
 
 export type StaffUpgradeKind = 'cooking' | 'waiter';
 export const MAX_WAITERS = 5;
+export const MAX_CHEFS = 3;
 export const MAX_UPGRADE_LEVEL = 5;
 export const UPGRADE_LEVELS = { cooking: 2, waiter: 3 } as const;
 
@@ -9,6 +10,10 @@ const roundToFive = (value: number) => Math.round(value / 5) * 5;
 
 export function waiterHirePrice(count: number): number {
   return roundToFive(200 * Math.pow(1.2, count));
+}
+
+export function chefHirePrice(count: number): number {
+  return count <= 1 ? 1000 : 2500;
 }
 
 export function upgradePrice(kind: StaffUpgradeKind, level: number): number {

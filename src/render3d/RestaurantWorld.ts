@@ -19,6 +19,7 @@ import { createWallpaperLayer } from './wallpapers';
 import { createFloorLayer } from './floors';
 import { createWindowLayer } from './windows';
 import { moveWindow, placeWindow } from '../simulation/wallWindows';
+import { setEditorMode as setStateEditorMode } from '../simulation/editorMode';
 
 export interface WorldCallbacks {
   onChange(): void;
@@ -45,6 +46,7 @@ export class RestaurantWorld {
   private placementKind: FurnitureKind | null = null;
   private doorMoveMode = false;
   private editorMode = false;
+  private editorStartedAt: number | null = null;
   private selectedId: string | null = null;
   private editorMoving = false;
   private highlights: THREE.Mesh[] = [];
@@ -280,8 +282,28 @@ export class RestaurantWorld {
     this.hideHighlights();
   }
 
-  setEditorMode(enabled: boolean): void {
+  setEditorMode(enabled: boolean): number {
+    if (this.editorMode === enabled && Boolean(this.state.editorMode) === enabled) return 0;
     this.cancelPlacement();
+    const now = performance.now();
+    const relocated = setStateEditorMode(this.state, enabled);
+    if (enabled) {
+      this.editorStartedAt = now;
+      for (const guest of this.state.customers) {
+        const model = this.entities.get(guest.id);
+        if (model) model.visible = false;
+      }
+    } else {
+      const pausedFor = this.editorStartedAt === null ? 0 : now - this.editorStartedAt;
+      for (const guest of this.state.customers) {
+        const model = this.entities.get(guest.id);
+        if (model) model.visible = true;
+        const motion = this.motions.get(guest.id);
+        // Визуальная интерполяция продолжается с того же момента, а не догоняет время паузы.
+        if (motion) motion.startedAt += pausedFor;
+      }
+      this.editorStartedAt = null;
+    }
     this.editorMode = enabled;
     this.selectedId = null;
     this.editorMoving = false;
@@ -289,6 +311,7 @@ export class RestaurantWorld {
     this.callbacks.onSelect(null, false);
     this.callbacks.onWallDecorationSelect('painting', '');
     this.renderer.domElement.style.cursor = enabled ? 'pointer' : 'default';
+    return relocated.length;
   }
 
   moveSelected(): void {
@@ -534,12 +557,12 @@ export class RestaurantWorld {
     if (!point) return this.hideHighlights();
     const selected = this.state.furniture.find((item) => item.id === this.selectedId);
     const cells = this.editorMoving && selected
-      ? furnitureCells({ ...selected, position: point })
+      ? furnitureCells({ ...selected, position: point }, this.state)
       : this.placementKind === 'tableDouble'
-        ? furnitureCells({ id: 'preview', kind: 'tableDouble', position: point, rotation: 0 })
+        ? furnitureCells({ id: 'preview', kind: this.placementKind, position: point, rotation: 0 })
         : [point];
     const valid = cells.every((cell) => cell.x >= 0 && cell.y >= 0 && cell.x < this.state.width && cell.y < this.state.height &&
-      !this.state.furniture.some((item) => item.id !== this.selectedId && furnitureCells(item).some((occupied) => occupied.x === cell.x && occupied.y === cell.y))) &&
+      !this.state.furniture.some((item) => item.id !== this.selectedId && furnitureCells(item, this.state).some((occupied) => occupied.x === cell.x && occupied.y === cell.y))) &&
       (!this.doorMoveMode || point.x === 0 || point.y === 0 || point.x === this.state.width - 1 || point.y === this.state.height - 1);
     this.highlights.forEach((highlight, index) => {
       const cell = cells[index];
@@ -573,7 +596,7 @@ export class RestaurantWorld {
     this.editorMoving = false;
     this.hideHighlights();
     const item = this.state.furniture.find((candidate) => candidate.id === this.selectedId);
-    if (item) furnitureCells(item).forEach((cell, index) => {
+    if (item) furnitureCells(item, this.state).forEach((cell, index) => {
       const position = gridToWorld(cell);
       this.highlights[index].position.set(position.x, 0.12, position.z);
       this.highlights[index].visible = true;
@@ -715,20 +738,36 @@ export class RestaurantWorld {
         this.scene.add(model);
       }
       if (item.kind === 'door') {
-        const open = this.state.customers.some((guest) => ['entering', 'leaving'].includes(guest.state) &&
+        const open = !this.editorMode && this.state.customers.some((guest) => ['entering', 'leaving'].includes(guest.state) &&
           Math.abs(guest.position.x - item.position.x) + Math.abs(guest.position.y - item.position.y) <= 2);
         updateDoorVisual(model, open, 1 / 60);
       }
       if (item.kind === 'stove') {
-        const cooking = this.state.orders.some((order) => order.state === 'cooking');
+        const cooking = this.state.orders.some((order) => order.state === 'cooking' && order.stoveId === item.id);
         model.userData.pan.visible = cooking;
         model.userData.flame.visible = cooking;
         if (cooking) model.userData.flame.scale.y = 0.9 + Math.sin(time / 90) * 0.1;
+      }
+      if (item.kind === 'counter') {
+        const readyDish = model.userData.readyDish as THREE.Group | undefined;
+        if (readyDish) {
+          readyDish.visible = this.state.orders.some((order) => order.state === 'waitingDelivery' &&
+            !order.pickedUp && order.counterId === item.id);
+          readyDish.rotation.y = time / 1800;
+        }
       }
     }
     for (const actor of [...this.state.employees, ...this.state.customers]) {
       current.add(actor.id);
       let model = this.entities.get(actor.id);
+      if (this.editorMode && !('role' in actor)) {
+        // Объект гостя остаётся в сцене со всей анимацией, но полностью скрыт.
+        if (model) model.visible = false;
+        const label = this.deliveryLabels.get(actor.id);
+        if (label) label.hidden = true;
+        continue;
+      }
+      if (model) model.visible = true;
       const position = gridToWorld(actor.position);
       const target = new THREE.Vector3(position.x, 0.08, position.z);
       const grid = `${actor.position.x},${actor.position.y}`;

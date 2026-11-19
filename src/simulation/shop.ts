@@ -4,7 +4,8 @@ import { DISHES, recipeCost } from '../content/dishes';
 import { claimCalendarReward } from './calendar';
 import { expandBounds } from './expansion';
 import { guestSlotPrice, MAX_PURCHASED_SLOTS, recalculateGuestLimit } from './guestLimits';
-import { MAX_UPGRADE_LEVEL, MAX_WAITERS, UPGRADE_LEVELS, upgradePrice, waiterHirePrice, type StaffUpgradeKind } from './staff';
+import { chefHirePrice, MAX_CHEFS, MAX_UPGRADE_LEVEL, MAX_WAITERS, UPGRADE_LEVELS, upgradePrice, waiterHirePrice, type StaffUpgradeKind } from './staff';
+import { chefLimit, distanceToStove, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
 
 function spend(state: GameState, price: number, rating: number): boolean {
   if (state.coins < price) return false;
@@ -54,6 +55,25 @@ export function hireWaiter(state: GameState): CommandResult {
   if (!spend(state, waiterHirePrice(count), 100)) return insufficient;
   const id = `waiter-${state.tick}-${state.employees.length}`;
   state.employees.push({ id, role: 'waiter', position, energy: 100, movementCredit: 0 });
+  return { ok: true };
+}
+
+export function hireChef(state: GameState): CommandResult {
+  const count = state.employees.filter((employee) => employee.role === 'chef').length;
+  if (count >= MAX_CHEFS) return { ok: false, reason: 'Все повара наняты' };
+  if (count >= chefLimit(state)) return { ok: false, reason: 'Недостаточно плит' };
+  synchronizeChefStoves(state);
+  const stove = state.furniture.find((item) => item.kind === 'stove' &&
+    !state.employees.some((employee) => stoveForChef(state, employee)?.id === item.id));
+  if (!stove) return { ok: false, reason: 'Нет свободной плиты' };
+  const position = Array.from({ length: state.height }, (_, y) =>
+    Array.from({ length: state.width }, (_, x) => ({ x, y }))).flat()
+    .filter((point) => isWalkable(state, point) && withinChefRange(state, point, stove) &&
+      ![...state.employees, ...state.customers].some((actor) => actor.position.x === point.x && actor.position.y === point.y))
+    .sort((a, b) => distanceToStove(state, a, stove) - distanceToStove(state, b, stove))[0];
+  if (!position) return { ok: false, reason: 'Нет свободной клетки для повара' };
+  if (!spend(state, chefHirePrice(count), 100)) return insufficient;
+  state.employees.push({ id: `chef-${state.tick}-${state.employees.length}`, role: 'chef', position, energy: 100, movementCredit: 0, stoveId: stove.id });
   return { ok: true };
 }
 

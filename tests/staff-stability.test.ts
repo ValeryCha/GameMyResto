@@ -12,7 +12,7 @@ describe('устойчивость команды официантов', () => {
       const state = createGame();
       state.coins += 10_000;
       for (let count = 0; count < waiters; count += 1) hireWaiter(state);
-      expect(placeFurniture(state, 'counter', { x: 2, y: 1 }).ok).toBe(true);
+      expect(placeFurniture(state, 'counter', { x: 3, y: 1 }).ok).toBe(true);
       // Тест проверяет официантов, а не перегрузку одного стула новой входной очередью.
       state.furniture.push(
         { id: 'table-stability-2', kind: 'table', position: { x: 3, y: 4 }, rotation: 0 },

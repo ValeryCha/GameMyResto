@@ -3,7 +3,7 @@ import { LocalStorageAdapter } from './persistence/localStorageAdapter';
 import { RestaurantWorld } from './render3d/RestaurantWorld';
 import { createGame } from './simulation/createGame';
 import { CATALOG } from './content/coreContent';
-import { addTestFunds, buyCookingUpgrade, buyRecipe, buyWaiterUpgrade, expandRestaurant, hireWaiter, increaseGuestLimit } from './simulation/shop';
+import { addTestFunds, buyCookingUpgrade, buyRecipe, buyWaiterUpgrade, expandRestaurant, hireChef, hireWaiter, increaseGuestLimit } from './simulation/shop';
 import { claimCalendarReward } from './simulation/calendar';
 import { purchaseFurnitureBatch } from './simulation/inventory';
 import { buyOrApplyDoor, buyOrApplyFloor, buyOrApplyWallpaper, removeDoorPattern, removeFloor, removeWallpaper } from './simulation/decorations';
@@ -97,6 +97,12 @@ const shop = createShopPanel({
   onResetDecoration: resetDecoration,
   onClose: () => closePanels(),
   onHire: () => { hireWaiter(state); storage.save(state); },
+  onHireChef: () => {
+    const result = hireChef(state);
+    if (!result.ok) return hud.notify(result.reason ?? 'Не удалось нанять повара');
+    storage.save(state);
+    hud.notify('Повар нанят и закреплён за свободной плитой');
+  },
   onLimit: () => { increaseGuestLimit(state); storage.save(state); },
   onExpand: () => { expandRestaurant(state); storage.save(state); },
   onTestFunds: () => { addTestFunds(state); storage.save(state); },
@@ -248,7 +254,8 @@ function toggleEditor(force?: boolean): void {
   editing = force ?? !editing;
   cancelPlacement();
   closePanels();
-  world?.setEditorMode(editing);
+  const relocatedGuests = world?.setEditorMode(editing) ?? 0;
+  if (!editing && relocatedGuests > 0) hud.notify(`Гости возвращены · безопасно пересажены: ${relocatedGuests}`);
   editor.setVisible(editing);
   editor.update(state);
   overlay.hidden = true;

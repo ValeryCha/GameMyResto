@@ -8,7 +8,7 @@ const adjacent = (a: { x: number; y: number }, b: { x: number; y: number }) =>
 export function countUsableSeats(state: GameState): number {
   return state.furniture.filter((chair) => chair.kind === 'chair' && state.furniture.some((table) =>
     (table.kind === 'table' || table.kind === 'tableDouble') &&
-    furnitureCells(table).some((cell) => adjacent(cell, chair.position)))).length;
+    furnitureCells(table, state).some((cell) => adjacent(cell, chair.position)))).length;
 }
 
 export const capacity = (state: GameState): number => countUsableSeats(state);

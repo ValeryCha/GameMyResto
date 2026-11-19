@@ -29,6 +29,9 @@ export function createHud(callbacks: HudCallbacks) {
   const values: Record<string, HTMLSpanElement> = {};
   const ratingChange = document.createElement('small');
   ratingChange.className = 'hud-rating-change';
+  const ratingTrend = document.createElement('small');
+  ratingTrend.className = 'hud-rating-trend';
+  ratingTrend.dataset.testid = 'rating-trend';
   for (const [key, label] of [['coins', 'Монеты'], ['popularity', 'Рейтинг'], ['guests', 'Гости'], ['peak', 'Пик']]) {
     const item = document.createElement('span');
     item.className = `hud-stat hud-stat--${key}`;
@@ -41,11 +44,32 @@ export function createHud(callbacks: HudCallbacks) {
     item.append(value);
     if (key === 'popularity') {
       item.title = 'Рейтинг влияет на частоту визитов, терпение и чаевые до 20%';
-      item.append(ratingChange);
+      item.append(ratingTrend, ratingChange);
     }
     values[key] = value;
     text.append(item);
   }
+  const metrics = document.createElement('details');
+  metrics.className = 'hud-metrics';
+  metrics.dataset.testid = 'hud-metrics';
+  const metricsSummary = document.createElement('summary');
+  const metricsFlow = document.createElement('span');
+  const metricsTeam = document.createElement('span');
+  const metricsUpgrade = document.createElement('span');
+  metricsUpgrade.className = 'hud-upgrade-hint';
+  metrics.append(metricsSummary, metricsFlow, metricsTeam, metricsUpgrade);
+  const wideScreen = window.matchMedia('(min-width: 601px)');
+  const syncMetricsDisclosure = () => { metrics.open = wideScreen.matches; };
+  syncMetricsDisclosure();
+  wideScreen.addEventListener('change', syncMetricsDisclosure);
+  const diagnostics = document.createElement('details');
+  diagnostics.className = 'hud-diagnostics';
+  diagnostics.dataset.testid = 'order-diagnostics';
+  diagnostics.hidden = true;
+  const diagnosticsSummary = document.createElement('summary');
+  const diagnosticsList = document.createElement('div');
+  diagnosticsList.className = 'hud-diagnostics-list';
+  diagnostics.append(diagnosticsSummary, diagnosticsList);
   const experience = document.createElement('div');
   experience.className = 'hud-experience';
   experience.dataset.testid = 'hud-experience';
@@ -86,7 +110,7 @@ export function createHud(callbacks: HudCallbacks) {
   setButtonIcon(cancel, 'Готово', 'check');
   cancel.addEventListener('click', callbacks.onCancel);
   hint.append(hintText, cancel);
-  root.append(text, experience, actions, hint);
+  root.append(text, metrics, diagnostics, experience, actions, hint);
   const toast = document.createElement('div');
   toast.className = 'hud-toast';
   toast.hidden = true;
@@ -103,9 +127,8 @@ export function createHud(callbacks: HudCallbacks) {
   peakResult.setAttribute('role', 'status');
   peakResult.setAttribute('aria-label', 'Итог пикового часа');
   const queueIndicator = document.createElement('div');
-  queueIndicator.className = 'hud-peak-result';
+  queueIndicator.className = 'hud-queue-indicator';
   queueIndicator.dataset.testid = 'guest-queue';
-  queueIndicator.style.top = '222px';
   queueIndicator.hidden = true;
   queueIndicator.setAttribute('aria-label', 'Очередь у входа');
   document.body.append(root, toast, peakBanner, peakResult, queueIndicator);
@@ -120,7 +143,27 @@ export function createHud(callbacks: HudCallbacks) {
       values.coins.textContent = String(model.coins);
       values.popularity.textContent = model.popularity;
       values.guests.textContent = `${model.guests} · мест ${model.capacity}`;
-      values.guests.parentElement!.title = `Планируемый поток: ${model.arrivalsPer60.toFixed(1)} гостей за 60 с`;
+      values.guests.parentElement!.title = `Планируемый поток: ${model.arrivalsPer60.toFixed(1)} гостей за 60 тиков`;
+      ratingTrend.textContent = ` ${model.ratingTrend}`;
+      ratingTrend.setAttribute('aria-label', `Тренд рейтинга за 60 тиков: ${model.ratingReason}`);
+      ratingTrend.title = `${model.ratingDelta > 0 ? '+' : ''}${model.ratingDelta} за 60 тиков · ${model.ratingReason}`;
+      ratingTrend.classList.toggle('is-negative', model.ratingDelta < -1);
+      metricsSummary.textContent = `Места: ${model.occupiedSeats} занято / ${model.capacity} · Очередь: ${model.queue}/${QUEUE_LIMIT}`;
+      metricsFlow.textContent = `Поток: ${model.arrivalsPer60.toFixed(1)} приход / ${model.throughputPer60.toFixed(1)} обслуж. за 60 тиков`;
+      metricsTeam.textContent = `Официанты: ${model.team.waiters}/5 · Стойки: ${model.team.counters}/5 · Повара: ${model.team.chefs}/3 · Плиты: ${model.team.stoves}/3`;
+      metricsUpgrade.textContent = model.upgrade.text;
+      diagnostics.hidden = !model.diagnostics.length && !model.kitchenWarnings.length;
+      diagnosticsSummary.textContent = model.diagnostics.length
+        ? `Диагностика: ${model.diagnostics.length} задержек`
+        : 'Диагностика кухни';
+      diagnosticsList.replaceChildren(...[
+        ...model.kitchenWarnings.map((warning) => `⚠ ${warning}`),
+        ...model.diagnostics.slice(0, 3).map((order) => `${order.id} · ${order.state} · ${order.age} с · ${order.reason}`),
+      ].map((message) => {
+        const row = document.createElement('span');
+        row.textContent = message;
+        return row;
+      }));
       values.peak.textContent = model.peak ? `${model.peakRemaining} с` : `через ${model.peakRemaining} с`;
       values.peak.parentElement?.classList.toggle('is-peak', model.peak);
       const firstQueued = state.customers.find((guest) => guest.id === state.guestQueue[0]);

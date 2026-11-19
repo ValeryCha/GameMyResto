@@ -1,7 +1,7 @@
 export type Role = 'chef' | 'waiter';
 export type FurnitureKind = 'door' | 'stove' | 'table' | 'tableDouble' | 'chair' | 'plant' | 'counter';
 export interface Point { x: number; y: number }
-export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point; taskId?: string; movementCredit?: number }
+export interface Employee { id: string; role: Role; position: Point; energy: number; target?: Point; taskId?: string; movementCredit?: number; stoveId?: string }
 export interface Furniture { id: string; kind: FurnitureKind; position: Point; rotation: 0 | 90 | 180 | 270 }
 export type CustomerState = 'entering' | 'waiting' | 'queueWaiting' | 'seekingSeat' | 'wandering' | 'inspecting' | 'seated' | 'ordering' | 'waitingFood' | 'eating' | 'leaving';
 export type HairStyle = 'short' | 'long' | 'bun' | 'ponytail' | 'curly';
@@ -17,7 +17,7 @@ export interface Customer extends Partial<CustomerAppearance> {
   hasDesire?: boolean; desiredDishId?: string; waitingForRecipe?: boolean;
   queueEnteredAt?: number; queueWaitedTicks?: number; queuePatience?: number;
 }
-export interface Order { id: string; customerId: string; state: 'waitingCook' | 'cooking' | 'waitingDelivery' | 'delivered'; progress: number; dishId?: string; desired?: boolean; assignedTo?: string; pickedUp?: boolean }
+export interface Order { id: string; customerId: string; state: 'waitingWaiter' | 'takingOrder' | 'waitingCook' | 'cooking' | 'waitingDelivery' | 'delivered'; progress: number; dishId?: string; desired?: boolean; stoveId?: string; chefId?: string; deliveryProgress?: number; counterId?: string; assignedTo?: string; pickedUp?: boolean; stateChangedAt?: number }
 export interface CalendarState {
   lastClaimDate: string;
   nextDayIndex: number;
@@ -91,6 +91,10 @@ export interface GameState {
   calendar: CalendarState;
   /** Рейтинг ресторана в диапазоне 0–1000. */
   popularity: number;
+  /** Транзиентная история для тренда HUD; в сохранение не входит. */
+  ratingHistory: { tick: number; value: number }[];
+  /** Глобальная пауза симуляции на время редактора; в сохранение не входит. */
+  editorMode?: boolean;
   tick: number;
   arrivalProgress: number;
   width: number;

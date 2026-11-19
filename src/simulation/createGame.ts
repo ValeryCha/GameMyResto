@@ -9,7 +9,7 @@ export function createGame(): GameState {
     guestQueue: [], queueRejectedTotal: 0, queueTimeoutTotal: 0, queueSeatedTotal: 0, queueWaitTicksTotal: 0,
     paidExpansions: 0, purchasedGuestSlots: 0, upgrades: { cooking: 0, waiter: 0 }, lastDailyReward: '',
     calendar: { lastClaimDate: '', nextDayIndex: 0, cycle: 1 },
-    popularity: 100, tick: 0, arrivalProgress: 0, width: 8, height: 8,
+    popularity: 100, ratingHistory: [{ tick: 0, value: 100 }], tick: 0, arrivalProgress: 0, width: 8, height: 8,
     randomSeed: 123456789, guestLimit: 7, maxGuestLimit: 7, furnitureInventory: {},
     ownedWallpapers: {}, appliedWallpapers: [],
     activeFloorPattern: null, ownedFloorPatterns: [], activeWallpaperId: null,
@@ -18,7 +18,7 @@ export function createGame(): GameState {
     appliedChefSkins: [], appliedWaiterSkins: [], ownedPaintings: [], appliedPaintings: [], ownedWindows: [], appliedWindows: [],
     ownedLoyaltyItems: [], toleranceBonus: 0, decorationRatingBonus: 0,
     employees: [
-      { id: 'chef-1', role: 'chef', position: { x: 2, y: 2 }, energy: 100 },
+      { id: 'chef-1', role: 'chef', position: { x: 2, y: 2 }, energy: 100, stoveId: 'stove-1' },
     ],
     furniture: [
       { id: 'door-1', kind: 'door', position: { x: 0, y: 7 }, rotation: 0 },

@@ -44,8 +44,8 @@ arrivalProgress += arrivalRate на каждом игровом тике
 ### 1.3. Пропускная способность
 
 ```text
-C = clamp(0, 5, chefs)
-S = clamp(0, 5, stoves)
+C = clamp(0, 3, chefs)
+S = clamp(0, 3, stoves)
 W = clamp(0, 5, waiters)
 K = clamp(0, 5, counters)
 U = cooking upgrade, 0..5
@@ -69,7 +69,7 @@ seatRate = capacity / (T_service / max(1, min(W, K)) + T_eat)
 throughput = min(kitchenRate, serviceRate, seatRate)
 ```
 
-- Кухня масштабируется до 5 пар `min(C, S)`; до LOGIC-7 обычная конфигурация 1/1.
+- Кухня масштабируется до 3 пар `min(C, S)`; до LOGIC-7 обычная конфигурация 1/1.
 - Выдача масштабируется до 5 линий `min(W, K)`.
 - Отсутствие повара, плиты, официанта или стойки делает соответствующее звено нулевым.
 - `D = 0.92` учитывает детерминированное `waiterIndex % counters.length` и не меняется.

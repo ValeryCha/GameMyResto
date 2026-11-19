@@ -51,7 +51,7 @@ export function createEditorPanel(callbacks: EditorCallbacks) {
       if (item) this.setWallDecoration(null);
       title.textContent = item ? CATALOG[item.kind].name : 'Выберите предмет';
       hint.textContent = moving ? 'Выберите новую свободную клетку' : item ? 'Выберите действие' : 'Нажмите на мебель или декорацию на стене';
-      move.disabled = !item || item.kind === 'door'; rotate.disabled = !item; remove.disabled = !item || item.kind === 'door';
+      move.disabled = !item; rotate.disabled = !item; remove.disabled = !item || item.kind === 'door';
       setButtonIcon(move, moving ? 'Отменить перемещение' : 'Переместить', moving ? 'close' : 'move');
     },
     setWallDecoration(value: WallDecorationSelection) {

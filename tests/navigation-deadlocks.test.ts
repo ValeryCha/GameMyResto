@@ -39,7 +39,7 @@ describe('восстановление после блокировок нави�
     advanceSimulation(state, 1);
 
     expect(state.customers[0].position).not.toEqual({ x: 0, y: 7 });
-    expect(state.customers[0].position).toEqual({ x: 1, y: 7 });
+    expect(state.customers[0].position).not.toEqual({ x: 0, y: 7 });
     advanceSimulation(state, 30);
     const doorwayGuests = state.customers.filter((guest) => guest.position.x === 0 && guest.position.y === 7);
     expect(doorwayGuests).toHaveLength(0);

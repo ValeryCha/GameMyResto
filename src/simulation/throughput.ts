@@ -1,5 +1,6 @@
 import { availableDishes } from './progression';
 import { capacity } from './guestFlow';
+import { counterDeliveryInterval, MAX_STOVES } from './kitchen';
 import type { GameState } from './types';
 
 export interface ThroughputMetrics {
@@ -24,12 +25,15 @@ export function weightedCookTime(state: GameState): number {
 
 export function kitchenRate(state: GameState): number {
   const chefs = clampStaff(state.employees.filter((employee) => employee.role === 'chef').length);
-  const stoves = clampStaff(state.furniture.filter((item) => item.kind === 'stove').length);
+  const stoves = Math.min(MAX_STOVES, state.furniture.filter((item) => item.kind === 'stove').length);
   const cookTime = weightedCookTime(state);
   // У существующих скинов нет числовых кухонных бонусов; будущий суммарный бонус ограничивается 5%.
   const skinBonus = Math.min(0.05, 0);
   const cookTimeFactor = (1 - 0.08 * state.upgrades.cooking) * (1 - skinBonus);
-  return cookTime > 0 && cookTimeFactor > 0 ? Math.min(chefs, stoves) / (cookTime * cookTimeFactor) : 0;
+  if (cookTime <= 0 || cookTimeFactor <= 0) return 0;
+  const cookingRate = Math.min(chefs, stoves) / (cookTime * cookTimeFactor);
+  const deliveryRate = chefs > 0 && stoves > 0 ? 1 / counterDeliveryInterval(state) : 0;
+  return Math.min(cookingRate, deliveryRate);
 }
 
 export function serviceRate(state: GameState): number {
