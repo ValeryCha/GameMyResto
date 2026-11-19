@@ -5,6 +5,7 @@ import { paintingById } from '../content/paintings';
 import { windowById } from '../content/windows';
 import { furnitureSkinById } from '../content/furnitureSkins';
 import type { GameState } from './types';
+import { DAILY_QUESTS, type DailyQuest } from '../content/dailyQuests';
 
 function sumDecorPrices(category: DecorCategory, state: GameState): number {
   switch (category) {
@@ -50,4 +51,50 @@ export function processSideQuests(state: GameState): void {
     state.completedSideQuestIds.push(quest.id);
     state.coins += reward;
   }
+}
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+export function selectDailyQuest(state: GameState): void {
+  const today = todayKey();
+  if (state.dailyQuestState.date === today) return;
+  const index = hashString(`${today}:${state.randomSeed}`) % DAILY_QUESTS.length;
+  const quest = DAILY_QUESTS[index];
+  state.dailyQuestState = {
+    date: today,
+    id: quest.id,
+    progress: quest.progress(state),
+    rewarded: false,
+  };
+}
+
+export function processDailyQuest(state: GameState): void {
+  selectDailyQuest(state);
+  if (state.dailyQuestState.rewarded) return;
+  const quest = DAILY_QUESTS.find((q) => q.id === state.dailyQuestState.id);
+  if (!quest) return;
+
+  const current = quest.progress(state);
+  const delta = Math.max(0, current - state.dailyQuestState.progress);
+
+  if (delta >= quest.target) {
+    state.dailyQuestState.rewarded = true;
+    state.coins += quest.rewardCoins;
+    state.experience += quest.rewardXp;
+  }
+}
+
+export function recordPeakTotals(state: GameState, servedDelta: number): void {
+  state.peakQuestTotals.servedTotal += servedDelta;
 }

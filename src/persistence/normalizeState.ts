@@ -189,7 +189,8 @@ export function normalizeState(state: GameState): GameState {
   state.questBaseline ??= captureQuestBaseline(state);
   state.completedSideQuestIds ??= [];
   state.dailyQuestState ??= { date: '', id: '', progress: 0, rewarded: false };
-  state.peakQuestTotals ??= { servedTotal: 0 };
-  processProgression(state); return state;
+  state.peakQuestTotals ??= { servedTotal: 0, perfectPeaksTotal: 0 };
+  state.peakQuestTotals.perfectPeaksTotal ??= 0;
+  return state;
 
 }

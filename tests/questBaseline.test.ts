@@ -40,6 +40,6 @@ describe('questBaseline — миграция', () => {
     normalizeState(state);
     expect(state.completedSideQuestIds).toEqual([]);
     expect(state.dailyQuestState).toEqual({ date: '', id: '', progress: 0, rewarded: false });
-    expect(state.peakQuestTotals).toEqual({ servedTotal: 0 });
+expect(state.peakQuestTotals).toEqual({ servedTotal: 0, perfectPeaksTotal: 0 });
   });
 });

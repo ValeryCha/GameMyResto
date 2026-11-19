@@ -1,6 +1,7 @@
 import { countUsableSeats, isPeakHour } from './guestFlow';
 import { kitchenRate } from './throughput';
 import type { GameState, PeakResult, PeakStats } from './types';
+import { recordPeakTotals } from './questProgress';
 
 export const PEAK_CYCLE_TICKS = 180;
 export const PEAK_DURATION_TICKS = 60;
@@ -72,7 +73,10 @@ export function finishPeak(state: GameState): PeakResult | null {
   state.peakState.last = result;
   state.peakState.current = null;
   state.peakState.activePeakId = null;
-
+  recordPeakTotals(state, result.served);
+  if (result.perfect) {
+    state.peakQuestTotals.perfectPeaksTotal = (state.peakQuestTotals.perfectPeaksTotal ?? 0) + 1;
+  }
   if (!state.peakState.rewardedPeakIds.includes(peakId)) {
     state.coins += bonusCoins;
     state.experience += bonusXP;

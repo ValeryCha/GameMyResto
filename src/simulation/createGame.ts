@@ -9,7 +9,7 @@ export function createGame(): GameState {
       waiters: 0, counters: 0, plants: 0, upgradeCooking: 0, upgradeWaiter: 0, },
     completedSideQuestIds: [],
     dailyQuestState: { date: '', id: '', progress: 0, rewarded: false },
-    peakQuestTotals: { servedTotal: 0 },
+    peakQuestTotals: { servedTotal: 0, perfectPeaksTotal: 0, },
     coins: 1_000, experience: 0, level: 1, completedQuestIds: [], unlockedDishIds: ['soup'],
     servedTotal: 0, revenueTotal: 0, satisfiedStreak: 0, desiredServedTotal: 0, unhappyTotal: 0,
     guestQueue: [], queueRejectedTotal: 0, queueTimeoutTotal: 0, queueSeatedTotal: 0, queueWaitTicksTotal: 0,

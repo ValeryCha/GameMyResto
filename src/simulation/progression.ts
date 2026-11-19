@@ -4,6 +4,7 @@ import { processSideQuests } from './questProgress';
 import type { GameState } from './types';
 import { expandBounds } from './expansion';
 import { MAX_LEVEL, recalculateGuestLimit } from './guestLimits';
+import { processSideQuests, processDailyQuest } from './questProgress';
 
 export const experienceThreshold = (level: number): number => 60 * level * (level + 1);
 
@@ -35,6 +36,7 @@ export function processProgression(state: GameState): void {
     applyLevels(state);
   }
   processSideQuests(state);
+  processDailyQuest(state);
 }
 
 export function availableDishes(state: GameState) {

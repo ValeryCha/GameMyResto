@@ -95,7 +95,9 @@ export interface GameState {
   };
   peakQuestTotals: {
     servedTotal: number;
+    perfectPeaksTotal: number;
   };
+
   coins: number;
   experience: number;
   level: number;
