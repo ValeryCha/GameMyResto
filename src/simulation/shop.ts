@@ -4,7 +4,7 @@ import { DISHES, recipeCost } from '../content/dishes';
 import { claimCalendarReward } from './calendar';
 import { expandBounds } from './expansion';
 import { guestSlotPrice, MAX_PURCHASED_SLOTS, recalculateGuestLimit } from './guestLimits';
-import { chefHirePrice, MAX_CHEFS, MAX_UPGRADE_LEVEL, MAX_WAITERS, UPGRADE_LEVELS, upgradePrice, waiterHirePrice, type StaffUpgradeKind } from './staff';
+import { chefHireLevel, chefHirePrice, MAX_CHEFS, MAX_UPGRADE_LEVEL, MAX_WAITERS, UPGRADE_LEVELS, upgradePrice, waiterHirePrice, type StaffUpgradeKind } from './staff';
 import { chefLimit, distanceToStove, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
 
 function spend(state: GameState, price: number, rating: number): boolean {
@@ -61,6 +61,8 @@ export function hireWaiter(state: GameState): CommandResult {
 export function hireChef(state: GameState): CommandResult {
   const count = state.employees.filter((employee) => employee.role === 'chef').length;
   if (count >= MAX_CHEFS) return { ok: false, reason: 'Все повара наняты' };
+  const requiredLevel = chefHireLevel(count);
+  if (state.level < requiredLevel) return { ok: false, reason: `Нужен ${requiredLevel} уровень` };
   if (count >= chefLimit(state)) return { ok: false, reason: 'Недостаточно плит' };
   synchronizeChefStoves(state);
   const stove = state.furniture.find((item) => item.kind === 'stove' &&

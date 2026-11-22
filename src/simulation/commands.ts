@@ -3,7 +3,7 @@ import { furnitureSkinById } from '../content/furnitureSkins';
 import type { CommandResult, FurnitureKind, GameState, Point } from './types';
 import { furnitureCells, samePoint } from './grid';
 import { applyDecorationRating, decorationRating } from './rating';
-import { synchronizeChefStoves } from './kitchen';
+import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, synchronizeChefStoves } from './kitchen';
 
 function inside(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height;
@@ -18,8 +18,12 @@ export function placeFurniture(state: GameState, kind: FurnitureKind, position: 
   const cells = furnitureCells({ id: 'preview', kind, position, rotation: 0 });
   if (cells.some((point) => !inside(state, point))) return { ok: false, reason: 'Вне ресторана' };
   if (cells.some((point) => occupied(state, point))) return { ok: false, reason: 'Клетка занята' };
-  if (state.coins < item.price) return { ok: false, reason: 'Недостаточно монет' };
-  state.coins -= item.price;
+  if (kind === 'stove' && stoveCount(state, true) >= MAX_STOVES) return { ok: false, reason: 'Можно иметь не больше трёх плит' };
+  const requiredLevel = kind === 'stove' ? nextStoveLevel(state) : 1;
+  if (state.level < requiredLevel) return { ok: false, reason: `Нужен ${requiredLevel} уровень` };
+  const price = kind === 'stove' ? nextStovePrice(state) : item.price;
+  if (state.coins < price) return { ok: false, reason: 'Недостаточно монет' };
+  state.coins -= price;
   state.popularity = Math.min(1000, state.popularity + item.rating);
   if (kind === 'plant') applyDecorationRating(state, decorationRating(CATALOG.plant.price));
   state.furniture.push({ id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation: 0 });

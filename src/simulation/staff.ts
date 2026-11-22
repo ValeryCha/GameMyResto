@@ -13,7 +13,11 @@ export function waiterHirePrice(count: number): number {
 }
 
 export function chefHirePrice(count: number): number {
-  return count <= 1 ? 1000 : 2500;
+  return count <= 1 ? 15_000 : count === 2 ? 35_000 : 0;
+}
+
+export function chefHireLevel(count: number): number {
+  return count <= 1 ? 15 : 25;
 }
 
 export function upgradePrice(kind: StaffUpgradeKind, level: number): number {

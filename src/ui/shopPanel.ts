@@ -11,8 +11,8 @@ import { WALLPAPERS, wallpaperById, wallpaperPreview } from '../content/wallpape
 import { guestSlotPrice, levelGuestLimit, MAX_PURCHASED_SLOTS } from '../simulation/guestLimits';
 import { assignedSkinId, loyaltyBonus } from '../simulation/catalogDecorations';
 import { UPGRADE_LEVELS } from '../simulation/shop';
-import { chefHirePrice, MAX_CHEFS, MAX_UPGRADE_LEVEL, MAX_WAITERS, upgradePrice, waiterHirePrice } from '../simulation/staff';
-import { chefCount, chefLimit, counterDeliveryInterval, MAX_STOVES, nextStovePrice, stoveCount } from '../simulation/kitchen';
+import { chefHireLevel, chefHirePrice, MAX_CHEFS, MAX_UPGRADE_LEVEL, MAX_WAITERS, upgradePrice, waiterHirePrice } from '../simulation/staff';
+import { chefCount, chefLimit, counterDeliveryInterval, MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount } from '../simulation/kitchen';
 import type { FurnitureKind, GameState } from '../simulation/types';
 import { createDishIcon, createIcon, setButtonIcon, type IconName } from './icons';
 import { pageBounds } from './pagination';
@@ -101,6 +101,8 @@ export function isLocked(state: GameState, item: ShopItem): boolean {
   if (item.paintingId) return state.level < paintingById(item.paintingId)!.level;
   if (item.windowId) return state.level < windowById(item.windowId)!.level;
   if (item.loyaltyId) return state.level < loyaltyItemById(item.loyaltyId)!.level;
+  if (item.id === 'chef') return state.level < chefHireLevel(chefCount(state));
+  if (item.id === 'stove') return state.level < nextStoveLevel(state);
   return Boolean(item.upgrade && state.level < UPGRADE_LEVELS[item.upgrade]);
 }
 export const canAfford = (state: GameState, item: ShopItem): boolean => state.coins >= getItemPrice(state, item);
@@ -348,9 +350,10 @@ export function createShopPanel(callbacks: ShopCallbacks) {
         const locked = isLocked(state, item) && !maxed;
         const owned = floorOwned || doorOwned;
         const priceValue = loyaltyOwned ? 0 : getItemPrice(state, item);
-        const requiredLevel = dish?.unlockLevel ?? wallpaper?.level ?? floor?.level ?? door?.level ?? skin?.level ?? painting?.level ?? windowItem?.level ?? loyalty?.level ?? (item.upgrade ? UPGRADE_LEVELS[item.upgrade] : 1);
+        const requiredLevel = dish?.unlockLevel ?? wallpaper?.level ?? floor?.level ?? door?.level ?? skin?.level ?? painting?.level ?? windowItem?.level ?? loyalty?.level
+          ?? (item.id === 'chef' ? chefHireLevel(chefs) : item.id === 'stove' ? nextStoveLevel(state) : item.upgrade ? UPGRADE_LEVELS[item.upgrade] : 1);
         const active = floorActive || wallpaperActive || doorActive || skinActive;
-        const status = wallpaperActive ? 'Выбрано' : floorActive || doorActive ? 'Активен' : loyaltyOwned ? 'Куплено' : maxed ? 'Максимум' : chefNeedsStove ? 'Недостаточно плит' : locked ? `Нужен ${requiredLevel} уровень`
+        const status = wallpaperActive ? 'Выбрано' : floorActive || doorActive ? 'Активен' : loyaltyOwned ? 'Куплено' : maxed ? 'Максимум' : locked ? `Нужен ${requiredLevel} уровень` : chefNeedsStove ? 'Недостаточно плит'
           : paintingOwned ? 'Разместить' : skinOwned ? 'Выбрать применение' : floorOwned || doorOwned ? 'Применить бесплатно' : `${priceValue} монет`;
         button.setAttribute('aria-label', `${item.label} — ${status}`); button.disabled = locked || maxed || chefNeedsStove || (active && !skinActive) || state.coins < priceValue;
         button.classList.toggle('is-locked', locked); button.classList.toggle('is-active', active || loyaltyOwned); setIcon(elements, item, false); label.textContent = item.label;
@@ -368,8 +371,8 @@ export function createShopPanel(callbacks: ShopCallbacks) {
                     : painting ? `Уровень ${painting.level} · ${painting.widthCells}×${painting.heightCells} · +${Math.max(1, Math.round(painting.price / 500))} к рейтингу`
                       : loyalty ? `Уровень ${loyalty.level} · +${loyalty.bonus}% к терпению · навсегда`
                         : item.id === 'limit' ? `Уровень: ${levelGuestLimit(state.level)} · Куплено: ${state.purchasedGuestSlots}/${MAX_PURCHASED_SLOTS}`
-                          : item.id === 'stove' ? `Плиты: ${stoveCount(state, true)}/${MAX_STOVES} · Выдача: ${counterDeliveryInterval(state)} с${stockCount ? ` · ${stock}` : ''}`
-                            : item.id === 'chef' ? `Нанято: ${chefs}/${MAX_CHEFS} · Доступно по плитам: ${chefLimit(state)}${chefNeedsStove ? ' · Установите ещё плиту' : ''}`
+                          : item.id === 'stove' ? `Плиты: ${stoveCount(state, true)}/${MAX_STOVES} · Следующая с ${requiredLevel} уровня · Выдача: ${counterDeliveryInterval(state)} с${stockCount ? ` · ${stock}` : ''}`
+                            : item.id === 'chef' ? `Нанято: ${chefs}/${MAX_CHEFS} · Следующий с ${requiredLevel} уровня · Доступно по плитам: ${chefLimit(state)}${chefNeedsStove ? ' · Установите ещё плиту' : ''}`
                               : item.id === 'waiter' ? `Нанято: ${waiters}/${MAX_WAITERS}` : stock;
         price.textContent = status;
       }

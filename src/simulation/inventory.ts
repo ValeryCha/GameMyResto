@@ -2,7 +2,7 @@ import { CATALOG } from '../content/coreContent';
 import { furnitureCells, samePoint } from './grid';
 import type { CommandResult, FurnitureKind, GameState, Point } from './types';
 import { applyDecorationRating, decorationRating } from './rating';
-import { MAX_STOVES, nextStovePrice, stoveCount, synchronizeChefStoves } from './kitchen';
+import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, synchronizeChefStoves } from './kitchen';
 
 export function purchaseFurnitureBatch(state: GameState, kind: FurnitureKind, quantity: number): CommandResult {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) return { ok: false, reason: 'Недопустимое количество' };
@@ -10,7 +10,11 @@ export function purchaseFurnitureBatch(state: GameState, kind: FurnitureKind, qu
   if (kind === 'stove' && stoveCount(state, true) + quantity > MAX_STOVES) return { ok: false, reason: 'Можно иметь не больше трёх плит' };
   let price = 0;
   for (let index = 0; index < quantity; index += 1) {
-    price += kind === 'stove' ? nextStovePrice({ ...state, furnitureInventory: { ...state.furnitureInventory, stove: (state.furnitureInventory.stove ?? 0) + index } }) : CATALOG[kind].price;
+    const projected = { ...state, furnitureInventory: { ...state.furnitureInventory, stove: (state.furnitureInventory.stove ?? 0) + index } };
+    if (kind === 'stove' && state.level < nextStoveLevel(projected)) {
+      return { ok: false, reason: `Нужен ${nextStoveLevel(projected)} уровень` };
+    }
+    price += kind === 'stove' ? nextStovePrice(projected) : CATALOG[kind].price;
   }
   if (state.coins < price) return { ok: false, reason: 'Недостаточно монет' };
   state.furnitureInventory ??= {};

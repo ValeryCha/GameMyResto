@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { createGame } from '../src/simulation/createGame';
 import { buyCookingUpgrade, buyWaiterUpgrade, hireWaiter } from '../src/simulation/shop';
-import { cookingProgress, upgradePrice, waiterHirePrice, waiterMovementSteps } from '../src/simulation/staff';
+import { chefHireLevel, chefHirePrice, cookingProgress, upgradePrice, waiterHirePrice, waiterMovementSteps } from '../src/simulation/staff';
 import type { Employee } from '../src/simulation/types';
 
 describe('экономика и эффекты персонала', () => {
+  it('использует цены и уровни найма второго и третьего повара', () => {
+    expect([1, 2, 3].map(chefHirePrice)).toEqual([15_000, 35_000, 0]);
+    expect([1, 2].map(chefHireLevel)).toEqual([15, 25]);
+  });
+
   it('использует пять прогрессивных цен найма', () => {
     expect([0, 1, 2, 3, 4].map(waiterHirePrice)).toEqual([200, 240, 290, 345, 415]);
   });
