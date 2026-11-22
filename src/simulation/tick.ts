@@ -29,8 +29,8 @@ function adjacentCells(state: GameState, item: Furniture): Point[] {
 }
 
 function occupiedCells(state: GameState, actor: { id?: string; role?: string }): Point[] {
-  // Коллизии между сотрудниками отключены; гости остаются препятствием для всех.
-  return (actor.role ? state.customers : [...state.employees, ...state.customers] as (Employee | Customer)[])
+  // Гости не блокируют гостей, сотрудники не блокируют сотрудников; между ролями коллизии сохраняются.
+  return (actor.role ? state.customers : state.employees)
     .filter((other) => other.id !== actor.id)
     .map((other) => other.position);
 }

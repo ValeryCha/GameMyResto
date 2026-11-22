@@ -9,7 +9,7 @@ const guest = (id: string, x: number, y: number, state: Customer['state'] = 'see
 });
 
 describe('маршруты с учётом персонажей', () => {
-  it('обходит занятую клетку вместо остановки перед свободным стулом', () => {
+  it('проходит через гостя по кратчайшему маршруту к свободному стулу', () => {
     const state = createGame();
     state.furniture.push(
       { id: 'table-2', kind: 'table', position: { x: 6, y: 4 }, rotation: 0 },
@@ -18,10 +18,10 @@ describe('маршруты с учётом персонажей', () => {
     const arriving = guest('arriving', 4, 5);
     state.customers.push(arriving, guest('blocker', 5, 5, 'leaving'));
     expect(moveToward(state, arriving, { x: 6, y: 5 })).toBe('moving');
-    expect(arriving.position).toEqual({ x: 4, y: 6 });
+    expect(arriving.position).toEqual({ x: 5, y: 5 });
   });
 
-  it('сохраняет бронь и цель, если временно нет маршрута', () => {
+  it('сохраняет бронь и доходит до стула через группу гостей', () => {
     const state = createGame();
     state.tick = 2;
     state.furniture.push(
@@ -40,6 +40,8 @@ describe('маршруты с учётом персонажей', () => {
     );
     advanceSimulation(state, 1);
     expect(arriving.seatId).toBe('chair-2');
-    expect(arriving.target).toEqual({ x: 6, y: 5 });
+    expect(arriving.position).toEqual({ x: 6, y: 5 });
+    expect(arriving.state).toBe('seated');
+    expect(arriving.target).toBeUndefined();
   });
 });
