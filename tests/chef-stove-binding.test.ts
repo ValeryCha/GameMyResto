@@ -33,14 +33,16 @@ function equipKitchen(state: GameState, count: 1 | 2 | 3): void {
 describe('строгая связь повара и плиты', () => {
   it('не нанимает второго повара при одной плите и не списывает монеты', () => {
     const state = createGame();
+    state.level = 15;
     const coins = state.coins;
     expect(hireChef(state)).toEqual({ ok: false, reason: 'Недостаточно плит' });
     expect(state.coins).toBe(coins);
     expect(state.employees.filter((employee) => employee.role === 'chef')).toHaveLength(1);
   });
 
-  it('после размещения второй плиты нанимает повара за 1000 и закрепляет свободную плиту', () => {
+  it('после размещения второй плиты нанимает повара за 15 000 и закрепляет свободную плиту', () => {
     const state = createGame();
+    state.level = 15;
     state.coins = 100_000;
     expect(purchaseFurnitureBatch(state, 'stove', 1).ok).toBe(true);
     expect(placePurchasedFurniture(state, 'stove', { x: 3, y: 1 }).ok).toBe(true);
@@ -50,17 +52,64 @@ describe('строгая связь повара и плиты', () => {
     expect(chefs).toHaveLength(2);
     expect(new Set(chefs.map((chef) => chef.stoveId)).size).toBe(2);
     expect(chefs.every((chef) => stoveForChef(state, chef))).toBe(true);
-    expect(state.coins).toBe(79_000);
+    expect(state.coins).toBe(65_000);
   });
 
   it('разрешает дополнительные плиты при меньшем числе поваров', () => {
     const state = createGame();
+    state.level = 25;
     state.coins = 100_000;
     expect(purchaseFurnitureBatch(state, 'stove', 2).ok).toBe(true);
     expect(placePurchasedFurniture(state, 'stove', { x: 3, y: 1 }).ok).toBe(true);
     expect(placePurchasedFurniture(state, 'stove', { x: 5, y: 1 }).ok).toBe(true);
     expect(chefLimit(state)).toBe(3);
     expect(state.employees.filter((employee) => employee.role === 'chef')).toHaveLength(1);
+  });
+
+  it('полная покупка 3/3 стоит 120 000 и сохраняет уникальные связи', () => {
+    const state = createGame();
+    state.level = 25;
+    state.coins = 120_000;
+    expect(purchaseFurnitureBatch(state, 'stove', 2).ok).toBe(true);
+    expect(placePurchasedFurniture(state, 'stove', { x: 3, y: 1 }).ok).toBe(true);
+    expect(placePurchasedFurniture(state, 'stove', { x: 5, y: 1 }).ok).toBe(true);
+    expect(hireChef(state).ok).toBe(true);
+    expect(hireChef(state).ok).toBe(true);
+    const chefs = state.employees.filter((employee) => employee.role === 'chef');
+    expect(state.coins).toBe(0);
+    expect(chefs).toHaveLength(3);
+    expect(new Set(chefs.map((chef) => chef.stoveId)).size).toBe(3);
+    expect(chefs.every((chef) => stoveForChef(state, chef))).toBe(true);
+    expect(hireChef(state)).toEqual({ ok: false, reason: 'Все повара наняты' });
+  });
+
+  it('не нанимает второго повара на 14 уровне и не списывает монеты', () => {
+    const state = createGame();
+    state.level = 14;
+    state.coins = 100_000;
+    expect(hireChef(state)).toEqual({ ok: false, reason: 'Нужен 15 уровень' });
+    expect(state.coins).toBe(100_000);
+  });
+
+  it('не продаёт вторую плиту на 14 уровне и не списывает монеты', () => {
+    const state = createGame();
+    state.level = 14;
+    state.coins = 100_000;
+    expect(purchaseFurnitureBatch(state, 'stove', 1)).toEqual({ ok: false, reason: 'Нужен 15 уровень' });
+    expect(state.coins).toBe(100_000);
+  });
+
+  it('не нанимает третьего повара и не продаёт третью плиту на 24 уровне', () => {
+    const state = createGame();
+    state.level = 25;
+    state.coins = 100_000;
+    expect(purchaseFurnitureBatch(state, 'stove', 1).ok).toBe(true);
+    expect(placePurchasedFurniture(state, 'stove', { x: 3, y: 1 }).ok).toBe(true);
+    expect(hireChef(state).ok).toBe(true);
+    state.level = 24;
+    expect(hireChef(state)).toEqual({ ok: false, reason: 'Нужен 25 уровень' });
+    expect(purchaseFurnitureBatch(state, 'stove', 1)).toEqual({ ok: false, reason: 'Нужен 25 уровень' });
+    expect(state.coins).toBe(65_000);
   });
 
   it('блокирует четвёртого повара даже при трёх плитах', () => {
@@ -160,6 +209,9 @@ describe('двухклеточный скин плиты', () => {
 
   it('размещение обычной плиты по-прежнему проверяет только одну клетку', () => {
     const state = createGame();
+    state.level = 15;
+    state.coins = 20_000;
     expect(placeFurniture(state, 'stove', { x: 7, y: 7 }).ok).toBe(true);
+    expect(state.coins).toBe(0);
   });
 });

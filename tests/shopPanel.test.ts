@@ -48,4 +48,28 @@ describe('модель панели магазина', () => {
     expect(getItemPrice(state, cooking)).toBe(390);
     expect(getItemPrice(state, waiter)).toBe(675);
   });
+
+  it('разблокирует второго повара и плиту на 15, третьих — на 25 уровне', () => {
+    const state = createGame();
+    const chef = SHOP_ITEMS.find((item) => item.id === 'chef')!;
+    const stove = SHOP_ITEMS.find((item) => item.id === 'stove')!;
+    expect(chef.category).toBe('staff');
+    expect(stove.category).toBe('kitchen');
+    expect(isLocked(state, chef)).toBe(true);
+    expect(isLocked(state, stove)).toBe(true);
+    expect(getItemPrice(state, chef)).toBe(15_000);
+    expect(getItemPrice(state, stove)).toBe(20_000);
+    state.level = 15;
+    expect(isLocked(state, chef)).toBe(false);
+    expect(isLocked(state, stove)).toBe(false);
+    state.furniture.push({ id: 'stove-2', kind: 'stove', position: { x: 3, y: 1 }, rotation: 0 });
+    state.employees.push({ id: 'chef-2', role: 'chef', position: { x: 3, y: 2 }, energy: 100, stoveId: 'stove-2' });
+    expect(isLocked(state, chef)).toBe(true);
+    expect(isLocked(state, stove)).toBe(true);
+    expect(getItemPrice(state, chef)).toBe(35_000);
+    expect(getItemPrice(state, stove)).toBe(50_000);
+    state.level = 25;
+    expect(isLocked(state, chef)).toBe(false);
+    expect(isLocked(state, stove)).toBe(false);
+  });
 });

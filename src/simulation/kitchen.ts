@@ -23,6 +23,10 @@ export function nextStovePrice(state: GameState): number {
   return owned >= 2 ? 50_000 : owned >= 1 ? 20_000 : 300;
 }
 
+export function nextStoveLevel(state: GameState): number {
+  return stoveCount(state, true) >= 2 ? 25 : 15;
+}
+
 export function stoveForChef(state: GameState, chef: Employee): Furniture | undefined {
   return chef.role === 'chef' && chef.stoveId
     ? state.furniture.find((item) => item.kind === 'stove' && item.id === chef.stoveId)

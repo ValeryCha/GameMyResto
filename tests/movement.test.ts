@@ -39,15 +39,19 @@ describe('безопасное перемещение', () => {
     expect(actor.position).toEqual({ x: 2, y: 3 });
   });
 
-  it('блокирует стул, занятый другим гостем', () => {
+  it('гость проходит через другого гостя, но не через сотрудника', () => {
     const state = createGame();
     const actor: Customer = { id: 'arriving', position: { x: 5, y: 6 }, state: 'seekingSeat', patience: 300 };
     state.customers.push(
       actor,
       { id: 'sitting', position: { x: 5, y: 5 }, state: 'seated', patience: 300, seatId: 'chair-1' },
     );
-    expect(moveToward(state, actor, { x: 5, y: 5 })).toBe('blocked');
-    expect(actor.position).toEqual({ x: 5, y: 6 });
+    expect(moveToward(state, actor, { x: 5, y: 5 })).toBe('arrived');
+    expect(actor.position).toEqual({ x: 5, y: 5 });
+
+    actor.position = { x: 2, y: 3 };
+    expect(moveToward(state, actor, { x: 2, y: 2 })).toBe('blocked');
+    expect(actor.position).toEqual({ x: 2, y: 3 });
   });
 
   it('делает два безопасных шага за один игровой тик', () => {

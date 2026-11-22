@@ -45,7 +45,7 @@ describe('восстановление после блокировок нави�
     expect(doorwayGuests).toHaveLength(0);
   });
 
-  it('уступает соседнюю клетку уходящим, не теряя бронь стула', () => {
+  it('проходит через уходящего гостя, не теряя бронь стула', () => {
     const state = createGame();
     state.tick = 2;
     const arriving = { id: 'arriving', position: { x: 1, y: 7 }, state: 'seekingSeat' as const, patience: 300, seatId: 'chair-1', target: { x: 5, y: 5 } };
@@ -56,7 +56,7 @@ describe('восстановление после блокировок нави�
 
     advanceSimulation(state, 1);
 
-    expect(arriving.position).toEqual({ x: 2, y: 7 });
+    expect(arriving.position).toEqual({ x: 1, y: 5 });
     expect(arriving.seatId).toBe('chair-1');
     expect(arriving.target).toEqual({ x: 5, y: 5 });
   });

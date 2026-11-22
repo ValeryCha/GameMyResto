@@ -20,6 +20,7 @@ function addStovesAndCounters(state: ReturnType<typeof createGame>) {
 describe('кухня с тремя плитами', () => {
   it('списывает 20 000 за вторую и 50 000 за третью, запрещая четвёртую', () => {
     const state = createGame();
+    state.level = 25;
     state.coins = 100_000;
     expect(nextStovePrice(state)).toBe(20_000);
     expect(purchaseFurnitureBatch(state, 'stove', 1)).toEqual({ ok: true });
