@@ -353,7 +353,7 @@ export function createShopPanel(callbacks: ShopCallbacks) {
         const requiredLevel = dish?.unlockLevel ?? wallpaper?.level ?? floor?.level ?? door?.level ?? skin?.level ?? painting?.level ?? windowItem?.level ?? loyalty?.level
           ?? (item.id === 'chef' ? chefHireLevel(chefs) : item.id === 'stove' ? nextStoveLevel(state) : item.upgrade ? UPGRADE_LEVELS[item.upgrade] : 1);
         const active = floorActive || wallpaperActive || doorActive || skinActive;
-        const status = wallpaperActive ? 'Выбрано' : floorActive || doorActive ? 'Активен' : loyaltyOwned ? 'Куплено' : maxed ? 'Максимум' : locked ? `Нужен ${requiredLevel} уровень` : chefNeedsStove ? 'Недостаточно плит'
+        const status = wallpaperActive ? 'Выбрано' : floorActive || doorActive ? 'Активен' : loyaltyOwned ? 'Куплено' : maxed ? 'Максимум' : chefNeedsStove ? 'Недостаточно плит' : locked ? `Нужен ${requiredLevel} уровень`
           : paintingOwned ? 'Разместить' : skinOwned ? 'Выбрать применение' : floorOwned || doorOwned ? 'Применить бесплатно' : `${priceValue} монет`;
         button.setAttribute('aria-label', `${item.label} — ${status}`); button.disabled = locked || maxed || chefNeedsStove || (active && !skinActive) || state.coins < priceValue;
         button.classList.toggle('is-locked', locked); button.classList.toggle('is-active', active || loyaltyOwned); setIcon(elements, item, false); label.textContent = item.label;

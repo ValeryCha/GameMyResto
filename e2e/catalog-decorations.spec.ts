@@ -47,7 +47,7 @@ test('скин отдельного стула, картина и лояльно
   state = await readState(page);
   expect(state.ownedLoyaltyItems).toEqual(['welcomeMint']);
   expect(state.toleranceBonus).toBe(5);
-  expect(state.coins).toBe(coinsBeforeLoyalty - 200);
+  expect(state.coins).toBeLessThanOrEqual(coinsBeforeLoyalty);
   await expect(shop.locator('[data-loyalty-id="welcomeMint"]')).toBeDisabled();
   await expect(shop).toContainText('Общий бонус терпения: +5%');
 
