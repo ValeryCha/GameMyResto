@@ -10,8 +10,8 @@ import { createGuestOrder, settleOrder } from './orders';
 import { createAppearance } from '../render3d/appearance';
 import { arrivalRate, patienceMultiplier } from './guestFlow';
 import { cookingProgress, waiterMovementSteps } from './staff';
-import { counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
-import { counterDeliveryInterval, kitchenDistance, nearestCounterForStove, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
+import { counterForChef, counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
+import { counterDeliveryInterval, kitchenDistance, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
 import { transitionOrder } from './orderDiagnostics';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
@@ -369,7 +369,7 @@ function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true)
       !state.employees.some((other) => other.id !== chef.id && other.role === 'chef' && other.taskId === candidate.id));
     if (!order) break;
     chef.taskId = order.id;
-    const counter = nearestCounterForStove(state, stove);
+    const counter = counterForChef(state, chef);
     if (!counter) { chef.taskId = undefined; return; }
     const nearby = kitchenDistance(chef.position, counter.position) === 1 && withinChefRange(state, chef.position, stove);
     const target = adjacentCells(state, counter)
