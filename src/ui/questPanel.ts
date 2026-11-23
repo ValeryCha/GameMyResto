@@ -1,5 +1,7 @@
 import './questPanel.css';
 import { QUESTS } from '../content/quests';
+import { SIDE_QUESTS } from '../content/sideQuests';
+import { DAILY_QUESTS } from '../content/dailyQuests';
 import { experienceThreshold } from '../simulation/progression';
 import { getHudModel } from '../simulation/selectors';
 import { QUEUE_LIMIT } from '../simulation/queue';
@@ -29,6 +31,10 @@ export function createQuestPanel(onClose?: () => void) {
   const rating = document.createElement('section');
   rating.className = 'rating-breakdown';
   rating.setAttribute('aria-label', 'Детализация рейтинга');
+
+  // Секция «Главные»
+  const mainTitle = document.createElement('h3');
+  mainTitle.textContent = 'Главные задания';
   const list = document.createElement('div');
   list.className = 'quest-list';
   const rows = QUESTS.map((quest, index) => {
@@ -48,7 +54,63 @@ export function createQuestPanel(onClose?: () => void) {
     list.append(item);
     return { item, status, id: quest.id, quest };
   });
-  root.append(header, levelBlock, rating, list);
+
+  // Секция «Побочные»
+  const sideTitle = document.createElement('h3');
+  sideTitle.textContent = 'Побочные задания';
+  const sideList = document.createElement('div');
+  sideList.className = 'side-quest-list';
+  const sideRows = SIDE_QUESTS.map((quest) => {
+    const item = document.createElement('article');
+    item.className = 'side-quest-item';
+    const name = document.createElement('strong');
+    name.className = 'side-quest-title';
+    name.append(createIcon(quest.icon), document.createTextNode(quest.title));
+    const description = document.createElement('span');
+    description.textContent = quest.description;
+    const reward = document.createElement('small');
+    reward.className = 'side-quest-reward';
+    reward.textContent = `+${quest.reward} монет`;
+    const lock = document.createElement('small');
+    lock.className = 'side-quest-lock';
+    lock.hidden = true;
+    item.append(name, description, reward, lock);
+    sideList.append(item);
+    return { item, lock, quest };
+  });
+
+  // Секция «Ежедневные»
+  const dailyTitle = document.createElement('h3');
+  dailyTitle.textContent = 'Ежедневные задания';
+  const dailyList = document.createElement('div');
+  dailyList.className = 'daily-quest-list';
+  const dailyRows = DAILY_QUESTS.map((quest) => {
+    const item = document.createElement('article');
+    item.className = 'daily-quest-item';
+    const name = document.createElement('strong');
+    name.className = 'daily-quest-title';
+    name.append(createIcon(quest.icon), document.createTextNode(quest.title));
+    const description = document.createElement('span');
+    description.textContent = quest.description;
+    const progressLabel = document.createElement('span');
+    progressLabel.className = 'daily-quest-progress';
+    const dailyBar = document.createElement('meter');
+    dailyBar.max = Math.max(quest.target, 1);
+    dailyBar.value = 0;
+    const reward = document.createElement('small');
+    reward.className = 'daily-quest-reward';
+    reward.textContent = `+${quest.rewardCoins} монет`;
+    const badge = document.createElement('small');
+    badge.className = 'daily-quest-badge';
+    badge.textContent = 'Выполнено';
+    badge.hidden = true;
+    item.append(name, description, progressLabel, dailyBar, reward, badge);
+    dailyList.append(item);
+    return { item, progressLabel, bar: dailyBar, badge, quest };
+  });
+
+  root.append(header, levelBlock, rating, mainTitle, list, sideTitle, sideList, dailyTitle, dailyList);
+
   const toast = document.createElement('div');
   toast.className = 'quest-toast';
   toast.hidden = true;
@@ -72,6 +134,7 @@ export function createQuestPanel(onClose?: () => void) {
     }, 2000);
   };
   const close = () => root.classList.remove('is-open');
+
   return {
     update(state: GameState) {
       const atMaxLevel = state.level >= 33;
@@ -102,6 +165,8 @@ export function createQuestPanel(onClose?: () => void) {
         peak.textContent = `Последний пик: обслужено ${result.served} · недовольных ${result.unhappy} · сервис ${Math.round(result.serviceRatio * 100)}% · +${result.bonusCoins} монет, +${result.bonusXP} опыта`;
         rating.append(peak);
       }
+
+      // Главные
       const activeQuest = QUESTS.find((quest) => quest.level === state.level && !state.completedQuestIds.includes(quest.id));
       for (const row of rows) {
         const completed = state.completedQuestIds.includes(row.id);
@@ -110,6 +175,40 @@ export function createQuestPanel(onClose?: () => void) {
         row.item.classList.toggle('is-active', active);
         row.status.textContent = completed ? 'Выполнено' : active ? 'Активно' : `Откроется на уровне ${row.quest.level}`;
       }
+
+      // Побочные
+      for (const row of sideRows) {
+        const completed = state.completedSideQuestIds.includes(row.quest.id);
+        const parentDone = !row.quest.dependsOn
+          || state.completedSideQuestIds.includes(row.quest.dependsOn)
+          || state.completedQuestIds.includes(row.quest.dependsOn);
+        const locked = !completed && !parentDone;
+        row.item.classList.toggle('is-complete', completed);
+        row.item.classList.toggle('is-locked', locked);
+        row.item.classList.toggle('is-available', !completed && !locked);
+        if (locked && row.quest.dependsOn) {
+          const parentTitle = SIDE_QUESTS.find((p) => p.id === row.quest.dependsOn)?.title
+            ?? QUESTS.find((p) => p.id === row.quest.dependsOn)?.title
+            ?? row.quest.dependsOn;
+          row.lock.textContent = `Требуется: ${parentTitle}`;
+          row.lock.hidden = false;
+        } else {
+          row.lock.hidden = true;
+          row.lock.textContent = '';
+        }
+      }
+
+      // Ежедневные
+      for (const row of dailyRows) {
+        const active = state.dailyQuestState.id === row.quest.id;
+        const current = active ? state.dailyQuestState.progress : 0;
+        row.progressLabel.textContent = `${current} / ${row.quest.target}`;
+        row.bar.value = Math.min(current, row.quest.target);
+        row.badge.hidden = !(active && state.dailyQuestState.rewarded);
+        row.item.classList.toggle('is-complete', active && state.dailyQuestState.rewarded);
+        row.item.classList.toggle('is-active', active && !state.dailyQuestState.rewarded);
+      }
+
       if (!initialized) {
         knownCompleted = new Set(state.completedQuestIds);
         knownLevel = state.level;
@@ -141,4 +240,5 @@ export function createQuestPanel(onClose?: () => void) {
       }
     },
   };
+
 }

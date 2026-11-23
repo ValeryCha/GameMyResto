@@ -22,3 +22,8 @@
 .quest-toast[hidden] { display: none; }
 @media (max-width: 600px) { .quest-panel { inset: 0; width: 100vw; height: 100dvh; padding: 14px 12px 108px; border: 0; border-radius: 0; transform: translateY(20px); } .quest-panel.is-open { transform: translateY(0); } .level-progress { margin: 12px 0 9px; padding: 11px; } .quest-list { grid-template-columns: 1fr; } .quest-toast { top: 12px; } }
 @media (prefers-reduced-motion: reduce) { .quest-panel { transition: none; } }
+.quest-panel {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
