@@ -10,6 +10,17 @@ test('скин отдельного стула, картина и лояльно
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/');
   await page.getByRole('button', { name: 'Играть' }).click();
+
+  // TECH-3: prevent side quest decor-painting from firing mid-test.
+  // Otherwise it adds +200 coins non-deterministically between the painting
+  // placement and the loyalty purchase, breaking the exact -200 delta at line 50.
+  await page.evaluate(() => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
+    save.state.questBaseline.paintings = 1;
+    localStorage.setItem('moy-restoran:primary', JSON.stringify(save));
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Играть' }).click();
   await page.getByRole('button', { name: 'Магазин', exact: true }).click();
   const shop = page.getByRole('complementary', { name: 'Магазин ресторана' });
   await shop.locator('[data-shop-category="decorations"]').click();
@@ -47,7 +58,7 @@ test('скин отдельного стула, картина и лояльно
   state = await readState(page);
   expect(state.ownedLoyaltyItems).toEqual(['welcomeMint']);
   expect(state.toleranceBonus).toBe(5);
-  expect(state.coins).toBeLessThanOrEqual(coinsBeforeLoyalty);
+  expect(state.coins).toBe(coinsBeforeLoyalty - 200); // welcomeMint: price 200, coin bonus отсутствует
   await expect(shop.locator('[data-loyalty-id="welcomeMint"]')).toBeDisabled();
   await expect(shop).toContainText('Общий бонус терпения: +5%');
 
@@ -88,6 +99,7 @@ test('ореховый стол применяется ко всем стола�
   await page.goto('/');
   await page.getByRole('button', { name: 'Играть' }).click();
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
+  await page.waitForFunction(() => localStorage.getItem('moy-restoran:primary') !== null, undefined, { timeout: 5000 });
   await page.evaluate(() => {
     const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
     save.state.level = 5;
