@@ -2,7 +2,7 @@ import { DISHES } from '../content/dishes';
 import { loyaltyItemById } from '../content/loyalty';
 import { chooseGuestAction } from './ai';
 import { findPath, furnitureCells, isWalkable, samePoint } from './grid';
-import { moveActor } from './movement';
+import { blocksMovement, moveActor } from './movement';
 import { nextRandom } from './random';
 import { findSeat, isSeatCurrent } from './seating';
 import { processProgression } from './progression';
@@ -29,9 +29,8 @@ function adjacentCells(state: GameState, item: Furniture): Point[] {
 }
 
 function occupiedCells(state: GameState, actor: { id?: string; role?: string }): Point[] {
-  // Гости не блокируют гостей, сотрудники не блокируют сотрудников; между ролями коллизии сохраняются.
-  return (actor.role ? state.customers : state.employees)
-    .filter((other) => other.id !== actor.id)
+  return [...state.customers, ...state.employees]
+    .filter((other) => other.id !== actor.id && blocksMovement(actor, other))
     .map((other) => other.position);
 }
 

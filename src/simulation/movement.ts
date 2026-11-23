@@ -2,14 +2,18 @@ import { findPath, isWalkable, samePoint } from './grid';
 import type { GameState, Point } from './types';
 
 export type MoveResult = 'arrived' | 'moving' | 'blocked';
+type MovementActor = { id?: string; role?: string; state?: string };
+
+// true означает, что other препятствует движению actor. Уходящие гости не блокируют персонал.
+export function blocksMovement(actor: MovementActor, other: MovementActor): boolean {
+  return actor.role ? !other.role && other.state !== 'leaving' : Boolean(other.role);
+}
 
 export function moveToward(state: GameState, actor: { id?: string; position: Point }, target: Point, allowFurnitureTarget = false): MoveResult {
   if (samePoint(actor.position, target)) return 'arrived';
   if (!allowFurnitureTarget && !isWalkable(state, target)) return 'blocked';
-  // Одинаковые роли не блокируют друг друга: гости проходят сквозь гостей, персонал — сквозь персонал.
-  // Для гостей препятствием остаются сотрудники, для сотрудников — гости.
-  const occupied = ('role' in actor ? state.customers : state.employees)
-    .filter((other) => other.id !== actor.id)
+  const occupied = [...state.customers, ...state.employees]
+    .filter((other) => other.id !== actor.id && blocksMovement(actor, other))
     .map((other) => other.position);
   const path = findPath(state, actor.position, target, occupied);
   if (!path.length) return 'blocked';
