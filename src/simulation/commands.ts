@@ -1,9 +1,9 @@
 import { CATALOG } from '../content/coreContent';
 import { furnitureSkinById } from '../content/furnitureSkins';
 import type { CommandResult, FurnitureKind, GameState, Point } from './types';
-import { furnitureCells, samePoint } from './grid';
+import { findPath, furnitureCells, samePoint } from './grid';
 import { applyDecorationRating, decorationRating } from './rating';
-import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, synchronizeChefStoves } from './kitchen';
+import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, synchronizeChefStoves, withinChefRange } from './kitchen';
 
 function inside(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height;
@@ -80,7 +80,41 @@ export function moveFurniture(state: GameState, id: string, position: Point): Co
   const previous = item.position;
   item.position = { ...position };
   const result = validCells(state, item);
-  if (!result.ok) item.position = previous;
+  if (!result.ok) {
+    item.position = previous;
+    return result;
+  }
+  if (item.kind === 'stove') {
+    const directions: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+    const candidates = new Map<string, Point>();
+    for (const cell of furnitureCells(item, state)) for (const direction of directions) {
+      const point = { x: cell.x + direction.x, y: cell.y + direction.y };
+      if (inside(state, point) && !occupied(state, point)) candidates.set(`${point.x},${point.y}`, point);
+    }
+    for (const chef of state.employees.filter((employee) => employee.role === 'chef' && employee.stoveId === item.id)) {
+      const interrupted = new Set(chef.activeOrders ?? []);
+      for (const order of state.orders.filter((candidate) => interrupted.has(candidate.id))) {
+        order.state = 'waitingCook';
+        order.stoveId = undefined;
+        order.chefId = undefined;
+        order.deliveryProgress = 0;
+      }
+      chef.target = undefined;
+      chef.taskId = undefined;
+      chef.activeOrders = [];
+      if (withinChefRange(state, chef.position, item)) continue;
+      const obstacles = [...state.employees, ...state.customers]
+        .filter((actor) => actor.id !== chef.id).map((actor) => actor.position);
+      const target = [...candidates.values()]
+        .filter((point) => !obstacles.some((actor) => samePoint(actor, point)))
+        .map((point) => ({ point, path: findPath(state, chef.position, point, obstacles) }))
+        .filter((candidate) => candidate.path.length > 0)
+        .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+      if (target) chef.position = { ...target };
+    }
+  }
+  // После любой перестановки восстанавливаем уникальные связи поваров с доступными плитами.
+  synchronizeChefStoves(state);
   return result;
 }
 

@@ -48,11 +48,15 @@ function nearestCell(state: GameState, actor: { id?: string; role?: string; posi
 function chefRouteTo(state: GameState, chef: Employee, target: Point, stove: Furniture): Point[] {
   if (!withinChefRange(state, target, stove)) return [];
   if (samePoint(chef.position, target)) return [];
+  // Возврат к соседней с плитой клетке разрешён из любой точки ресторана.
+  if (adjacentCells(state, stove).some((point) => samePoint(point, target))) {
+    return findPath(state, chef.position, target, occupiedCells(state, chef));
+  }
   const outsideKitchen: Point[] = [];
   for (let y = 0; y < state.height; y += 1) {
     for (let x = 0; x < state.width; x += 1) {
       const point = { x, y };
-      // Повар перемещается только в рабочей зоне собственной плиты.
+      // Рабочие походы внутри кухни по-прежнему ограничены зоной собственной плиты.
       if (!withinChefRange(state, point, stove)) outsideKitchen.push(point);
     }
   }
@@ -61,7 +65,17 @@ function chefRouteTo(state: GameState, chef: Employee, target: Point, stove: Fur
 
 function moveChef(state: GameState, chef: Employee, target: Point, stove: Furniture): 'arrived' | 'moving' | 'blocked' {
   if (samePoint(chef.position, target)) return 'arrived';
-  const path = chefRouteTo(state, chef, target, stove);
+  let path = chefRouteTo(state, chef, target, stove);
+  if (!path.length && !withinChefRange(state, chef.position, stove)) {
+    const returnTarget = adjacentCells(state, stove)
+      .map((point) => ({ point, path: findPath(state, chef.position, point, occupiedCells(state, chef)) }))
+      .filter((candidate) => candidate.path.length > 0)
+      .sort((a, b) => a.path.length - b.path.length)[0];
+    if (returnTarget) {
+      target = returnTarget.point;
+      path = returnTarget.path;
+    }
+  }
   if (!path.length) return 'blocked';
   chef.position = { ...path[0] };
   return samePoint(chef.position, target) ? 'arrived' : 'moving';
