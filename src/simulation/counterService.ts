@@ -7,6 +7,14 @@ export function counterLoad(state: GameState, counterId: string): number {
   return state.orders.filter((order) => order.counterId === counterId && order.state === 'waitingDelivery').length;
 }
 
+/** Блюда, физически ожидающие официанта на стойке, в порядке размещения. */
+export function counterPlateDishes(state: GameState, counterId: string): string[] {
+  return state.orders
+    .filter((order) => order.counterId === counterId && order.state === 'waitingDelivery' && !order.pickedUp && order.dishId)
+    .slice(0, COUNTER_MAX_SLOTS)
+    .map((order) => order.dishId!);
+}
+
 export function serviceCounters(state: GameState): Furniture[] {
   return state.furniture.filter((item) => item.kind === 'counter');
 }

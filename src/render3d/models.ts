@@ -7,6 +7,7 @@ import { box, cylinder, sphere } from './materials';
 import type { RestaurantSkin } from './skins';
 import { doorPatternById } from '../content/doors';
 import { furnitureSkinById } from '../content/furnitureSkins';
+import { createCounterPlateSlots } from './counterPlates';
 
 const wood = 0x8b5136;
 const darkWood = 0x57392e;
@@ -101,13 +102,9 @@ function counterModel(skinId?: string): THREE.Group {
   if (skinId === 'neonCounter') box(group, [0.84, 0.055, 0.04], [0, 0.62, 0.39], colors.accent);
   if (skinId === 'metalCounter') for (const x of [-0.34, 0.34]) for (const y of [0.18, 0.56]) sphere(group, 0.025, [x, y, 0.38], colors.accent);
   if (skinId === 'vintageCounter') for (const x of [-0.28, 0, 0.28]) box(group, [0.04, 0.56, 0.035], [x, 0.36, 0.39], colors.secondary);
-  const readyDish = new THREE.Group();
-  cylinder(readyDish, 0.2, 0.025, [0, 0.835, 0], cream);
-  sphere(readyDish, 0.13, [0, 0.91, 0], 0xe8a44f, [1, 0.55, 1]);
-  cylinder(readyDish, 0.025, 0.07, [0, 0.99, 0], 0x65a35d);
-  readyDish.visible = false;
-  group.add(readyDish);
-  group.userData.readyDish = readyDish;
+  const counterPlates = createCounterPlateSlots();
+  group.add(...counterPlates);
+  group.userData.counterPlates = counterPlates;
   return group;
 }
 

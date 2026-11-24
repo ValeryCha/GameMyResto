@@ -19,6 +19,8 @@ import { createWallpaperLayer } from './wallpapers';
 import { createFloorLayer } from './floors';
 import { createWindowLayer } from './windows';
 import { moveWindow, placeWindow } from '../simulation/wallWindows';
+import { counterPlateDishes } from '../simulation/counterService';
+import { syncCounterPlates } from './counterPlates';
 import { setEditorMode as setStateEditorMode } from '../simulation/editorMode';
 
 export interface WorldCallbacks {
@@ -748,14 +750,7 @@ export class RestaurantWorld {
         model.userData.flame.visible = cooking;
         if (cooking) model.userData.flame.scale.y = 0.9 + Math.sin(time / 90) * 0.1;
       }
-      if (item.kind === 'counter') {
-        const readyDish = model.userData.readyDish as THREE.Group | undefined;
-        if (readyDish) {
-          readyDish.visible = this.state.orders.some((order) => order.state === 'waitingDelivery' &&
-            !order.pickedUp && order.counterId === item.id);
-          readyDish.rotation.y = time / 1800;
-        }
-      }
+      if (item.kind === 'counter') syncCounterPlates(model, counterPlateDishes(this.state, item.id));
     }
     for (const actor of [...this.state.employees, ...this.state.customers]) {
       current.add(actor.id);
