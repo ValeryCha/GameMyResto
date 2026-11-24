@@ -127,7 +127,10 @@ describe('кухня с тремя плитами', () => {
           .map((stove) => kitchenDistance(chef.position, stove.position)));
         expect(nearest).toBeLessThanOrEqual(2);
       }
-      expect(state.orders.every((order) => order.state === 'waitingDelivery')).toBe(true);
+      // В тесте один повар: его рабочая зона охватывает две стойки по три слота.
+      const capacity = 6;
+      expect(state.orders.filter((order) => order.state === 'waitingDelivery')).toHaveLength(capacity);
+      expect(state.orders.filter((order) => order.state !== 'waitingDelivery')).toHaveLength(12 - capacity);
     }
   });
 });

@@ -16,13 +16,13 @@ function equipKitchen(state: GameState, count: 1 | 2 | 3): void {
   state.arrivalProgress = -10_000;
   if (count >= 2) state.furniture.push(
     { id: 'stove-2', kind: 'stove', position: { x: 3, y: 1 }, rotation: 0 },
-    { id: 'counter-2', kind: 'counter', position: { x: 3, y: 2 }, rotation: 0 },
   );
   if (count === 3) state.furniture.push(
     { id: 'stove-3', kind: 'stove', position: { x: 5, y: 1 }, rotation: 0 },
-    { id: 'counter-3', kind: 'counter', position: { x: 5, y: 2 }, rotation: 0 },
   );
-  state.furniture.push({ id: 'counter-1', kind: 'counter', position: { x: 1, y: 2 }, rotation: 0 });
+  for (let index = 1; index <= count; index += 1) {
+    state.furniture.push({ id: `counter-${index}`, kind: 'counter', position: { x: index * 2 - 1, y: 2 }, rotation: 0 });
+  }
   for (let index = 2; index <= count; index += 1) {
     state.employees.push({
       id: `chef-${index}`, role: 'chef', position: { x: index * 2, y: 2 }, energy: 100, stoveId: `stove-${index}`,

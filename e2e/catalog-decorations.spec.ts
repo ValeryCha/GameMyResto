@@ -10,6 +10,7 @@ test('скин отдельного стула, картина и лояльно
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto('/');
   await page.getByRole('button', { name: 'Играть' }).click();
+  await page.waitForFunction(() => localStorage.getItem('moy-restoran:primary') !== null, { timeout: 5000 });
 
   // TECH-3: prevent side quest decor-painting from firing mid-test.
   // Otherwise it adds +200 coins non-deterministically between the painting
