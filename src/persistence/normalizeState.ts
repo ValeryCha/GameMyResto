@@ -184,6 +184,12 @@ export function normalizeState(state: GameState): GameState {
     if (order.state === 'waitingDelivery') ensureOrderCounter(state, order);
   }
   state.orders = state.orders.filter((order) => order.state !== 'delivered' || state.customers.some((customer) => customer.id === order.customerId));
+  for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) {
+    const savedIds = Array.isArray(waiter.orderIds) ? waiter.orderIds.filter((id) => typeof id === 'string') : [];
+    const carriedIds = state.orders.filter((order) => order.state === 'waitingDelivery' && order.pickedUp && order.assignedTo === waiter.id).map((order) => order.id);
+    waiter.orderIds = [...new Set([...savedIds, ...carriedIds])].filter((id) => carriedIds.includes(id));
+    if (waiter.orderIds.length && (!waiter.taskId || !waiter.orderIds.includes(waiter.taskId))) waiter.taskId = waiter.orderIds[0];
+  }
   normalizeQueueState(state);
   normalizePeakState(state);
   state.questBaseline ??= captureQuestBaseline(state);
