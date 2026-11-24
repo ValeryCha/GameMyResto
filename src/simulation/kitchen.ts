@@ -1,4 +1,4 @@
-import { furnitureCells } from './grid';
+import { furnitureCells, samePoint } from './grid';
 import { MAX_CHEFS } from './staff';
 import type { Employee, Furniture, GameState, Point } from './types';
 
@@ -68,6 +68,28 @@ export const kitchenDistance = (a: Point, b: Point): number =>
 
 export function distanceToStove(state: GameState, point: Point, stove: Furniture): number {
   return Math.min(...furnitureCells(stove, state).map((cell) => kitchenDistance(cell, point)));
+}
+
+/** Лицевая свободная клетка плиты; при её занятии — первая свободная по периметру. */
+export function stoveStation(stove: Furniture, state: GameState): Point | null {
+  const directions: Record<Furniture['rotation'], Point> = {
+    0: { x: 0, y: 1 }, 90: { x: -1, y: 0 }, 180: { x: 0, y: -1 }, 270: { x: 1, y: 0 },
+  };
+  const cells = furnitureCells(stove, state);
+  const occupied = (point: Point) =>
+    point.x < 0 || point.y < 0 || point.x >= state.width || point.y >= state.height ||
+    state.furniture.some((item) => furnitureCells(item, state).some((cell) => samePoint(cell, point))) ||
+    [...state.employees, ...state.customers].some((actor) => samePoint(actor.position, point));
+  const direction = directions[stove.rotation];
+  const front = cells.map((cell) => ({ x: cell.x + direction.x, y: cell.y + direction.y }));
+  const preferred = front.find((point) => !occupied(point));
+  if (preferred) return preferred;
+  const adjacent = new Map<string, Point>();
+  for (const cell of cells) for (const offset of [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]) {
+    const point = { x: cell.x + offset.x, y: cell.y + offset.y };
+    if (!cells.some((stoveCell) => samePoint(stoveCell, point))) adjacent.set(`${point.x},${point.y}`, point);
+  }
+  return [...adjacent.values()].find((point) => !occupied(point)) ?? null;
 }
 
 export function withinChefRange(state: GameState, point: Point, stove?: Furniture): boolean {

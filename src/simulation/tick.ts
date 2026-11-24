@@ -11,7 +11,7 @@ import { createAppearance } from '../render3d/appearance';
 import { arrivalRate, patienceMultiplier } from './guestFlow';
 import { cookingProgress, waiterCarryCapacity, waiterMovementSteps } from './staff';
 import { counterForChef, counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
-import { counterDeliveryInterval, kitchenDistance, stoveBurners, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
+import { counterDeliveryInterval, kitchenDistance, stoveBurners, stoveForChef, stoveStation, synchronizeChefStoves, withinChefRange } from './kitchen';
 import { transitionOrder } from './orderDiagnostics';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
@@ -383,6 +383,21 @@ function updateKitchenOrders(state: GameState): void {
 function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true): void {
   const stove = stoveForChef(state, chef);
   if (!stove) { chef.activeOrders = []; chef.taskId = undefined; return; }
+  const station = stove.chefStation ?? (adjacentCells(state, stove).some((point) => samePoint(point, chef.position))
+    ? chef.position
+    : stoveStation(stove, state));
+  const returnToStation = () => {
+    if (station) {
+      if (!samePoint(chef.position, station)) moveChef(state, chef, station, stove);
+      return;
+    }
+    // Старый или полностью заблокированный сейв: сохраняем прежнее поведение без падения.
+    const target = adjacentCells(state, stove)
+      .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
+      .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
+      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
+    if (target) moveChef(state, chef, target, stove);
+  };
   const activeOrders = (chef.activeOrders ?? []).map((id) => state.orders.find((order) => order.id === id))
     .filter((order): order is Order => Boolean(order && order.stoveId === stove.id &&
       ['waitingCook', 'cooking'].includes(order.state)));
@@ -429,6 +444,10 @@ function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true)
     chef.activeOrders = chef.activeOrders!.filter((id) => id !== order.id);
     chef.taskId = undefined;
   }
+  if (chef.activeOrders.length !== activeOrders.length) {
+    returnToStation();
+    return;
+  }
 
   const handoff = state.orders.find((item) => item.state === 'takingOrder' && item.chefId === chef.id && item.assignedTo);
   const waiter = handoff ? state.employees.find((employee) => employee.id === handoff.assignedTo) : undefined;
@@ -452,11 +471,7 @@ function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true)
   }
 
   if (chef.activeOrders.length) {
-    const target = adjacentCells(state, stove)
-      .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
-      .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
-      .sort((a, b) => a.path.length - b.path.length)[0]?.point;
-    if (target) moveChef(state, chef, target, stove);
+    returnToStation();
     return;
   }
   chef.taskId = undefined;
