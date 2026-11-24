@@ -14,6 +14,11 @@ export function chefCount(state: GameState): number {
   return state.employees.filter((employee) => employee.role === 'chef').length;
 }
 
+/** Число одновременно доступных конфорок на каждой размещённой плите. */
+export function stoveBurners(state: GameState): number {
+  return Math.min(4, 2 + (stoveCount(state) - 1));
+}
+
 export function chefLimit(state: GameState): number {
   return Math.min(MAX_CHEFS, stoveCount(state));
 }

@@ -53,9 +53,9 @@ describe('кухня с тремя плитами', () => {
       { id: 'chef-3', role: 'chef', position: { x: 6, y: 2 }, energy: 100, stoveId: 'stove-3' },
     );
     state.orders.push(
-      { id: 'order-1', customerId: 'guest-1', state: 'waitingCook', progress: 0, dishId: 'soup' },
-      { id: 'order-2', customerId: 'guest-2', state: 'waitingCook', progress: 0, dishId: 'soup' },
-      { id: 'order-3', customerId: 'guest-3', state: 'waitingCook', progress: 0, dishId: 'soup' },
+      { id: 'order-1', customerId: 'guest-1', state: 'waitingCook', progress: 0, dishId: 'soup', stoveId: 'stove-1', chefId: 'chef-1' },
+      { id: 'order-2', customerId: 'guest-2', state: 'waitingCook', progress: 0, dishId: 'soup', stoveId: 'stove-2', chefId: 'chef-2' },
+      { id: 'order-3', customerId: 'guest-3', state: 'waitingCook', progress: 0, dishId: 'soup', stoveId: 'stove-3', chefId: 'chef-3' },
     );
 
     advanceSimulation(state);
@@ -104,11 +104,12 @@ describe('кухня с тремя плитами', () => {
     state.tick = 1;
     state.arrivalProgress = -10_000;
     advanceSimulation(state);
-    expect(state.orders[0].stoveId).toBeUndefined();
-    expect(state.orders[0].chefId).toBeUndefined();
-    expect(state.orders[0].state).toBe('waitingCook');
-    expect(state.orders[0].progress).toBe(2);
+    expect(state.orders[0].stoveId).toBe('stove-1');
+    expect(state.orders[0].chefId).toBe('chef-1');
+    expect(state.orders[0].state).toBe('cooking');
+    expect(state.orders[0].progress).toBe(3);
     expect(state.orders[1].progress).toBe(4);
+    expect(state.employees[0].activeOrders).toEqual(['valid', 'legacy']);
   });
 
   it('не выпускает повара дальше двух клеток от ближайшей плиты в длительном цикле', () => {

@@ -4,7 +4,7 @@ import { placeFurniture } from '../src/simulation/commands';
 import { applyFurnitureSkin, buyFurnitureSkin } from '../src/simulation/catalogDecorations';
 import { furnitureCells } from '../src/simulation/grid';
 import { purchaseFurnitureBatch, placePurchasedFurniture } from '../src/simulation/inventory';
-import { chefLimit, stoveForChef, withinChefRange } from '../src/simulation/kitchen';
+import { chefLimit, stoveBurners, stoveForChef, withinChefRange } from '../src/simulation/kitchen';
 import { kitchenLayoutWarnings } from '../src/simulation/orderDiagnostics';
 import { hireChef } from '../src/simulation/shop';
 import { advanceSimulation } from '../src/simulation/tick';
@@ -128,10 +128,11 @@ describe('строгая связь повара и плиты', () => {
       { id: 'queued', customerId: 'guest-2', state: 'waitingCook', progress: 0, dishId: 'soup' },
     );
     advanceSimulation(state);
-    expect(state.employees.find((chef) => chef.id === 'chef-extra')?.stoveId).toBeUndefined();
+    const extraChef = state.employees.find((chef) => chef.id === 'chef-extra')!;
+    expect(extraChef.stoveId).toBeUndefined();
+    expect(extraChef.activeOrders).toEqual([]);
     expect(state.orders[0].progress).toBe(4);
-    expect(state.orders[1]).toMatchObject({ state: 'waitingCook', progress: 0 });
-    expect(state.orders[1].stoveId).toBeUndefined();
+    expect(state.orders[1]).toMatchObject({ state: 'cooking', progress: 1, stoveId: 'stove-1', chefId: 'chef-1' });
     expect(kitchenLayoutWarnings(state)).toContain('chef-extra: нет собственной плиты, повар ожидает');
   });
 
@@ -139,11 +140,16 @@ describe('строгая связь повара и плиты', () => {
     it(`конфигурация ${count}/${count}: повара параллельно доводят заказы до выдачи`, () => {
       const state = createGame();
       equipKitchen(state, count);
-      for (let index = 1; index <= count; index += 1) {
+      const orderCount = count * stoveBurners(state);
+      // У каждой плиты есть близкая резервная стойка, чтобы буфер не ограничивал проверку конфорок.
+      for (let index = count + 1; index <= count * 2; index += 1) {
+        state.furniture.push({ id: `counter-${index}`, kind: 'counter', position: { x: (index - count) * 2 - 1, y: 0 }, rotation: 0 });
+      }
+      for (let index = 1; index <= orderCount; index += 1) {
         state.orders.push({ id: `order-${index}`, customerId: `guest-${index}`, state: 'waitingCook', progress: 0, dishId: 'soup' });
       }
       advanceSimulation(state, 150);
-      expect(state.orders.map((order) => order.state)).toEqual(Array(count).fill('waitingDelivery'));
+      expect(state.orders.map((order) => order.state)).toEqual(Array(orderCount).fill('waitingDelivery'));
       expect(new Set(state.orders.map((order) => order.chefId))).toEqual(new Set(Array.from({ length: count }, (_, index) => `chef-${index + 1}`)));
       expect(new Set(state.orders.map((order) => order.stoveId))).toEqual(new Set(Array.from({ length: count }, (_, index) => `stove-${index + 1}`)));
       for (const chef of state.employees) {
