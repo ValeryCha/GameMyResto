@@ -4,6 +4,7 @@ export interface Dish {
   price: number;
   cookSeconds: number;
   unlockLevel: number;
+  emoji: string;
 }
 
 const DISH_NAMES: [string, string][] = [
@@ -42,6 +43,15 @@ const DISH_NAMES: [string, string][] = [
   ['royalBanquet', 'Королевский банкет'],
 ];
 
+const DISH_EMOJI: Record<string, string> = {
+  soup: '🍲', pasta: '🍝', salad: '🥗', cutlet: '🍖', fish: '🐟', signature: '🍽️',
+  omelet: '🍳', pizza: '🍕', burger: '🍔', dumplings: '🥟', risotto: '🍚', tacos: '🌮',
+  sushi: '🍣', borscht: '🥣', steak: '🥩', paella: '🥘', lasagna: '🍝', khinkali: '🥟',
+  tomYam: '🍜', pekingDuck: '🦆', ramen: '🍜', moussaka: '🍆', ravioli: '🥟',
+  chakhokhbili: '🍗', ratatouille: '🍆', meatballs: '🧆', kebab: '🍢', pilaf: '🍚',
+  fondue: '🫕', salmon: '🐟', veal: '🥩', tastingSet: '🍱', royalBanquet: '🍽️',
+};
+
 export const dishPrice = (level: number): number => 5 + 2 * (level - 1);
 export const recipeCost = (level: number): number => level === 1 ? 0 : 50 * Math.round(3.45 * Math.pow(level, 1.35));
 
@@ -51,4 +61,5 @@ export const DISHES: Dish[] = DISH_NAMES.map(([id, name], index) => ({
   price: dishPrice(index + 1),
   cookSeconds: 6 + index % 10,
   unlockLevel: index + 1,
+  emoji: DISH_EMOJI[id] ?? '🍽',
 }));
