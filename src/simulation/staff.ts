@@ -37,3 +37,10 @@ export function waiterMovementSteps(employee: Employee, level: number): number {
   employee.movementCredit -= steps;
   return steps;
 }
+
+export function waiterCarryCapacity(level: number): number {
+  const safe = Math.max(0, Math.min(MAX_UPGRADE_LEVEL, Math.floor(level)));
+  if (safe >= 5) return 3;
+  if (safe >= 3) return 2;
+  return 1;
+}

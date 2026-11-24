@@ -9,7 +9,7 @@ import { processProgression } from './progression';
 import { createGuestOrder, settleOrder } from './orders';
 import { createAppearance } from '../render3d/appearance';
 import { arrivalRate, patienceMultiplier } from './guestFlow';
-import { cookingProgress, waiterMovementSteps } from './staff';
+import { cookingProgress, waiterCarryCapacity, waiterMovementSteps } from './staff';
 import { counterForChef, counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
 import { counterDeliveryInterval, kitchenDistance, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
 import { transitionOrder } from './orderDiagnostics';
@@ -128,7 +128,10 @@ function cancelGuestOrder(state: GameState, guest: Customer): void {
   const order = state.orders.find((item) => item.customerId === guest.id);
   if (!order) return;
   const assignedEmployee = state.employees.find((employee) => employee.id === order.assignedTo);
-  if (assignedEmployee?.taskId === order.id) assignedEmployee.taskId = undefined;
+  if (assignedEmployee) {
+    assignedEmployee.orderIds = assignedEmployee.orderIds?.filter((id) => id !== order.id) ?? [];
+    if (assignedEmployee.taskId === order.id) assignedEmployee.taskId = assignedEmployee.orderIds[0];
+  }
   state.orders = state.orders.filter((item) => item.id !== order.id);
   guest.orderId = undefined;
 }
@@ -452,12 +455,28 @@ function parkIdleWaiter(state: GameState, waiter: Employee): void {
 }
 
 function updateWaiter(state: GameState, waiter: Employee): void {
+  const guestFor = (candidate: Order) => state.customers.find((item) => item.id === candidate.customerId);
+  const validCarried = (candidate: Order | undefined): boolean => Boolean(candidate &&
+    candidate.state === 'waitingDelivery' && candidate.pickedUp && candidate.assignedTo === waiter.id &&
+    guestFor(candidate) && guestFor(candidate)!.state !== 'leaving');
+  for (const id of waiter.orderIds ?? []) {
+    const carried = state.orders.find((item) => item.id === id);
+    if (!validCarried(carried) && carried) { carried.assignedTo = undefined; carried.pickedUp = false; }
+  }
+  waiter.orderIds = (waiter.orderIds ?? []).filter((id) => validCarried(state.orders.find((item) => item.id === id)));
+  // Восстанавливаем очередь старого сейва, где были только отметки на заказах.
+  for (const carried of state.orders.filter(validCarried)) {
+    if (!waiter.orderIds.includes(carried.id)) waiter.orderIds.push(carried.id);
+  }
+  if (waiter.orderIds.length) waiter.taskId = waiter.orderIds[0];
+
   let order = orderFor(state, waiter);
-  let guest = order ? state.customers.find((item) => item.id === order!.customerId) : undefined;
+  let guest = order ? guestFor(order) : undefined;
   if (order && order.state !== 'delivered' && (!guest || guest.state === 'leaving')) {
     order.assignedTo = undefined;
     order.pickedUp = false;
-    waiter.taskId = undefined;
+    waiter.orderIds = waiter.orderIds.filter((id) => id !== order!.id);
+    waiter.taskId = waiter.orderIds[0];
     order = undefined;
   }
   if (!order || order.state === 'delivered') {
@@ -465,7 +484,8 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     const homeCounter = counterForWaiter(state, waiter);
     const available = state.orders.filter((item) => ['waitingWaiter', 'waitingDelivery'].includes(item.state) &&
       state.customers.some((customer) => customer.id === item.customerId && customer.state !== 'leaving') &&
-      !state.employees.some((employee) => employee.id !== waiter.id && employee.taskId === item.id));
+      !state.employees.some((employee) => employee.id !== waiter.id &&
+        (employee.taskId === item.id || employee.orderIds?.includes(item.id))));
     // Своя стойка имеет приоритет, но любой свободный официант может помочь остальным.
     order = available.find((item) => item.state === 'waitingDelivery' && item.counterId === homeCounter?.id) ??
       available.find((item) => item.state === 'waitingWaiter') ?? available[0];
@@ -475,9 +495,9 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     }
     waiter.taskId = order.id;
     order.assignedTo = waiter.id;
-    guest = state.customers.find((item) => item.id === order!.customerId);
+    guest = guestFor(order);
   }
-  if (!guest) return;
+  if (!order || !guest) return;
   const steps = waiterMovementSteps(waiter, state.upgrades.waiter);
   const guestTarget = () => {
     const chair = state.furniture.find((item) => item.id === guest!.seatId);
@@ -499,13 +519,14 @@ function updateWaiter(state: GameState, waiter: Employee): void {
   }
 
   if (order.state === 'takingOrder') {
-    let chef = state.employees.find((employee) => employee.id === order.chefId && employee.role === 'chef');
+    const activeOrder = order;
+    let chef = state.employees.find((employee) => employee.id === activeOrder.chefId && employee.role === 'chef');
     if (!chef) {
       chef = state.employees.find((employee) => {
         const stove = stoveForChef(state, employee);
         return stove && !state.orders.some((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id);
       });
-      order.chefId = chef?.id;
+      activeOrder.chefId = chef?.id;
     }
     const stove = chef ? stoveForChef(state, chef) : undefined;
     if (!chef || !stove) return;
@@ -538,13 +559,29 @@ function updateWaiter(state: GameState, waiter: Employee): void {
       moveActor(state, waiter, pickup, steps);
       return;
     }
-    order.pickedUp = true;
+    const distanceToGuest = (candidate: Order) => {
+      const targetGuest = guestFor(candidate)!;
+      return Math.abs(targetGuest.position.x - waiter.position.x) + Math.abs(targetGuest.position.y - waiter.position.y);
+    };
+    const carried = state.orders
+      .filter((item) => item.state === 'waitingDelivery' && !item.pickedUp && item.counterId === counter.id &&
+        (!item.assignedTo || item.assignedTo === waiter.id) &&
+        !state.employees.some((employee) => employee.id !== waiter.id &&
+          (employee.taskId === item.id || employee.orderIds?.includes(item.id))))
+      .sort((a, b) => distanceToGuest(a) - distanceToGuest(b))
+      .slice(0, waiterCarryCapacity(state.upgrades.waiter));
+    for (const item of carried) { item.pickedUp = true; item.assignedTo = waiter.id; }
+    waiter.orderIds = carried.map((item) => item.id);
+    order = carried[0];
+    waiter.taskId = order.id;
+    guest = guestFor(order)!;
   }
   // После взятия блюда стойка больше не участвует в маршруте.
   const target = guestTarget();
   if (target && moveActor(state, waiter, target, steps) === 'arrived') {
     transitionOrder(order, 'delivered', state.tick);
-    waiter.taskId = undefined;
+    waiter.orderIds = waiter.orderIds.filter((id) => id !== order.id);
+    waiter.taskId = waiter.orderIds[0];
   }
 }
 
