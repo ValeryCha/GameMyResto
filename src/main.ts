@@ -308,8 +308,9 @@ function cancelPlacement(): void {
 function play(): void {
   menu.hide();
   container.hidden = false;
+  storage.save(state);   // ← добавить: сохраняем состояние при старте игры
   hud.setVisible(true);
-  shop.setVisible(true);
+  shop.setVisible(true);       // ← наши правки из прошлого шага
   quests.setVisible(true);
   calendar.setVisible(true);
   if (!world) {

@@ -24,6 +24,8 @@ for (const mobile of [false, true]) {
     expect(saved.activeWallpaperId).toBe('creamStripes');
     expect(saved.ownedWallpapers.creamStripes).toBe(1);
     expect(saved.appliedWallpapers).toHaveLength(1);
+    expect(saved.appliedWallpapers[0].wallpaperId).toBe('creamStripes');
+    const appliedWallCellId = saved.appliedWallpapers[0].wallCellId;
     await page.screenshot({ path: `artifacts/decorations-${mobile ? 'mobile' : 'desktop'}.png` });
     await page.evaluate(() => {
       const save = JSON.parse(localStorage.getItem('moy-restoran:primary')!);
@@ -34,7 +36,10 @@ for (const mobile of [false, true]) {
     await page.getByRole('button', { name: 'Играть' }).click();
     saved = await page.evaluate(() => JSON.parse(localStorage.getItem('moy-restoran:primary')!).state);
     expect(saved.activeWallpaperId).toBe('creamStripes');
-    expect(saved.appliedWallpapers).toHaveLength(1);
+    expect(saved.appliedWallpapers).toEqual(expect.arrayContaining([
+      { wallCellId: appliedWallCellId, wallpaperId: 'creamStripes' },
+    ]));
+    expect(saved.appliedWallpapers.length).toBeGreaterThan(1);
     expect(saved.width).toBe(12);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     if (!mobile) {
