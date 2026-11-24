@@ -344,6 +344,23 @@ function orderFor(state: GameState, employee: Employee): Order | undefined {
   return state.orders.find((order) => order.id === employee.taskId);
 }
 
+function pickLeastLoadedChef(
+  chefs: Employee[],
+  state: GameState,
+  capacity: number,
+): Employee | undefined {
+  const candidates = chefs
+    .filter((chef) => stoveForChef(state, chef))
+    .filter((chef) => (chef.activeOrders?.length ?? 0) < capacity);
+  if (candidates.length === 0) return undefined;
+  candidates.sort((a, b) => {
+    const diff = (a.activeOrders?.length ?? 0) - (b.activeOrders?.length ?? 0);
+    if (diff !== 0) return diff;
+    return a.id.localeCompare(b.id);
+  });
+  return candidates[0];
+}
+
 function updateKitchenOrders(state: GameState): void {
   const chefs = state.employees.filter((employee) => employee.role === 'chef');
   const capacity = stoveBurners(state);
@@ -371,7 +388,7 @@ function updateKitchenOrders(state: GameState): void {
   }
   // Свободные конфорки заполняются только заказами без плиты; связка повар–плита не нарушается.
   for (const queued of state.orders.filter((item) => item.state === 'waitingCook' && !item.stoveId)) {
-    const chef = chefs.find((employee) => stoveForChef(state, employee) && (employee.activeOrders?.length ?? 0) < capacity);
+    const chef = pickLeastLoadedChef(chefs, state, capacity);
     const stove = chef && stoveForChef(state, chef);
     if (!chef || !stove) break;
     queued.stoveId = stove.id;
@@ -574,10 +591,11 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     const activeOrder = order;
     let chef = state.employees.find((employee) => employee.id === activeOrder.chefId && employee.role === 'chef');
     if (!chef) {
-      chef = state.employees.find((employee) => {
-        const stove = stoveForChef(state, employee);
-        return stove && (employee.activeOrders?.length ?? 0) < stoveBurners(state);
-      });
+      chef = pickLeastLoadedChef(
+        state.employees.filter((e) => e.role === 'chef'),
+        state,
+        stoveBurners(state),
+      );
       activeOrder.chefId = chef?.id;
     }
     const stove = chef ? stoveForChef(state, chef) : undefined;
