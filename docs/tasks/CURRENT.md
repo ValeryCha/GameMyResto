@@ -5,10 +5,10 @@
 
 ## Где мы
 
-- LOGIC-8.1 ✅, 8.2 ✅, 8.3 ✅, visual 3D-тарелки ✅, LOGIC-8.4 ✅ (`09afd32`).
-- **LOGIC-8.4.1 — станция повара — в работе.** Ветка `logic-8.4.1-chef-station`, Phase 2 (код).
-- main = `ddc4afe` (docs LOGIC-8.4.1 task), origin/main = `7331a67`.
-- Unit 374/374, e2e 53/53, build ✅.
+- LOGIC-8.1 ✅, 8.2 ✅, 8.3 ✅, visual 3D-тарелки ✅, LOGIC-8.4 ✅ (`09afd32`), **LOGIC-8.4.1 ✅ (`a3b37cc`)**.
+- main = `a3b37cc`, origin/main = `a3b37cc` (sync).
+- Unit 380/380, e2e 53/53, build exit 0.
+- **Следующая: VISUAL-8.5 — 4 конфорки на плите.**
 
 ## Порядок задач
 
@@ -21,25 +21,13 @@
 | 5 | TECH-1 — интеграционные тесты мебели | после TECH-2 |
 | 6 | TECH-5.1 — e2e для плотной планировки | бэклог |
 
-## Текущая задача: LOGIC-8.4.1
+## Текущая задача: VISUAL-8.5 (следующая сессия)
 
-**Цель:** станция повара = фиксированная клетка за плитой по rotation. Возврат после доставки.
+**Цель:** 4 конфорки на плите (визуально + логика).
 
-**Решения:**
-- rotation: 0→юг, 90→запад, 180→север, 270→восток. Fallback adjacentCells → null.
-- Заблокирована станция → `placeFurniture`/`moveFurniture` → `{ok: false, reason: 'Нет места для повара'}`.
-- **НЕ блокировать прогресс готовки** при отсутствии на станции.
-- `industrialStove` — скин, не kind.
-- Fallback `chefStation === undefined` → `adjacentCells` в `updateChef`.
+**Статус:** task-файл ещё не создан. Следующий шаг — Phase 0/1 (Kimi) → DeepSeek пишет `docs/tasks/VISUAL-8.5-stove-4-burners.md`.
 
-**Файлы:**
-- `src/simulation/types.ts` — `Furniture.chefStation?: Point`
-- `src/simulation/kitchen.ts` — `stoveStation()`
-- `src/simulation/commands.ts` — проверки в place/move
-- `src/simulation/tick.ts` — `updateChef` возврат
-- `tests/chefStation.test.ts` (новый, 6)
-
-**Статус:** Phase 1 ✅, Phase 2 (код) — ждём ответ Kimi.
+**Инвариант:** `stoveBurners = Math.min(4, 2 + (stoveCount - 1))` — не трогать без согласования (см. handoff §8).
 
 ## Структура работы с Kimi Code
 
@@ -63,35 +51,33 @@
 ## Последние коммиты
 
 ```
+a3b37cc merge LOGIC-8.4.1: chef station
+65fab54 feat(LOGIC-8.4.1): chef station behind stove, return after delivery
+192a5b6 docs: handoff snapshot 2026-11-25 (LOGIC-8.4.1 Phase 2 in work)
 ddc4afe docs: complete LOGIC-8.4.1 task under git-rule B
 7331a67 docs: LOGIC-8.4 done, LOGIC-8.4.1 next
-a06f277 docs: add LOGIC-8.4.1 chef station task
-09afd32 feat(LOGIC-8.4): chef routing + counter load balancing
-3cbb59d docs: add LOGIC-8.4 chef routing task
 ```
 
 ## Состояние
 
-- main = `ddc4afe` (ahead of origin by 1)
-- origin/main = `7331a67`
-- Ветка: `logic-8.4.1-chef-station` (в работе)
-- Теги: `archive/*` (10)
-- Unit 374/374, e2e 53/53, build ✅
+- main = `a3b37cc` (sync с origin)
+- Ветка `logic-8.4.1-chef-station` удалена, тег `archive/logic-8.4.1-chef-station` = `65fab54`
+- Теги: `archive/*` (11)
+- Unit 380/380, e2e 53/53, build exit ✅
 
 ## Что дальше
 
-1. Ждать ответ Kimi (Phase 2).
-2. Ревью → Phase 3 → Phase 4.
-3. Пользователь: коммит feat → merge `--no-ff` в main → `npm test` на main → build → push.
-4. DeepSeek: обновить handoff §2, §3, §5, §8, §13 + CURRENT.
-5. VISUAL-8.5 (после 8.4.1).
+1. VISUAL-8.5 (4 конфорки) — Phase 0/1 → task-файл → Phase 2–4 → merge → push.
+2. TECH-3 (`catalog-decorations.spec.ts`) — разобрать `4394b2d`.
+3. TECH-2, TECH-1, TECH-5.1 — по цепочке.
 
-## Техдолг (погасить после 8.4.1)
+## Техдолг (после 8.4.1)
 
+- `stoveStation` — считает calling chef занятым (Ф1, работает только благодаря lock-in)
+- `placeFurniture` — откат через `pop()` (Ф2, fragile, лучше `splice`)
 - `handoff/task-6.1с.md` — кириллическая «с» + не `.DONE.md`
-- `handoff/CURRENT.md` — устарел (main, 368→374, git-rule)
-- `docs/tasks/LOGIC-8.4.1-chef-station.md` — §ФАЗА 0 «main», §ФАЗА 1 «adjacentCells в grid.ts», «Git запрещён»
-- `4394b2d relax coins check` — разобрать для TECH-3
+- `docs/tasks/LOGIC-8.4.1-chef-station.md` — §ФАЗА 0 «main», §ФАЗА 1 «adjacentCells в grid.ts», «Git запрещён» (B)
+- Локальные ветки `logic-8.1/8.2/8.3`, `feat-counter-plates-visual` + remote `origin/logic-1-v3-specs`, `origin/wip-overnight` — пакетная чистка (теги `archive/*`)
 
 ## Блокеры
 

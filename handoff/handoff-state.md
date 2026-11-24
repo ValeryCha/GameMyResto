@@ -27,18 +27,21 @@
 
 | Ветка | Коммит | Статус |
 |---|---|---|
-| main | ddc4afe | docs: complete LOGIC-8.4.1 task (git-rule B) |
-| origin/main | 7331a67 | docs: LOGIC-8.4 done, LOGIC-8.4.1 next |
-| logic-8.4.1-chef-station | ddc4afe (→ feat) | в работе |
+| main | a3b37cc | ✅ HEAD, merge LOGIC-8.4.1, запушен |
+| origin/main | a3b37cc | ✅ sync |
 | master | 0bf062a | архив (реликт) |
-| archive/* (10 тегов) | см. `git tag` | архивы удалённых веток |
+| archive/* (11 тегов) | см. `git tag` | архивы удалённых веток |
 
-**Тесты:** unit **374/374**, e2e **53/53**, build ✅.
-**`git status`:** на ветке `logic-8.4.1-chef-station`. Clean или modified (Phase 2 в работе).
-**`main` ahead of origin by 1** (`ddc4afe` не запушен — push после merge 8.4.1).
+**Тесты:** unit **380/380**, e2e **53/53**, build ✅ (exit 0).
+**`git status`:** на main, clean, ahead 0.
 
 ## 3. Что сделано по сессиям
+### 2026-11-25 — LOGIC-8.4.1 (закрыт, `a3b37cc`)
 
+- Feat `65fab54` — `Furniture.chefStation?: Point` + `stoveStation()` + проверки в `commands.ts` + возврат в `updateChef` + `tests/chefStation.test.ts` (6 кейсов)
+- Merge `a3b37cc` (`--no-ff`), push origin/main
+- Ветка удалена, тег `archive/logic-8.4.1-chef-station` (`65fab54`)
+- 
 ### 2026-11-25 — LOGIC-8.4.1 (в работе)
 
 **Ветка `logic-8.4.1-chef-station` от `ddc4afe`.**
@@ -93,25 +96,17 @@
 ## 5. Roadmap
 
 ```
-LOGIC-8.4.1 (в работе) → VISUAL-8.5 → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
+VISUAL-8.5 → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 ```
 
 | # | Задача | Статус |
 |---|---|---|
-| 1 | LOGIC-8.1 (counter buffer) | ✅ b8a18df |
-| 2 | LOGIC-8.2 (waiter multi-carry) | ✅ 8836233 |
-| 3 | visual 3D plates | ✅ 62b4591 |
-| 4 | LOGIC-8.3 (stove burners) | ✅ df08de4 |
-| 5 | LOGIC-8.4 (chef routing) | ✅ 09afd32 |
-| 6 | **LOGIC-8.4.1 (станция повара)** | **← в работе** |
-| 7 | VISUAL-8.5 (4 конфорки) | после 8.4.1 |
-| 8 | TECH-3 (catalog coins) | после visual |
-| 9 | TECH-2 (waitForFunction) | после TECH-3 |
-| 10 | TECH-1 (интеграционные тесты мебели) | после TECH-2 |
-| 11 | TECH-5.1 (e2e layout) | бэклог |
-| 12 | seatRate 0.0556 | не трогать |
+| 1–5 | 8.1, 8.2, visual, 8.3, 8.4 | ✅ |
+| 6 | **LOGIC-8.4.1** | ✅ a3b37cc |
+| 7 | **VISUAL-8.5** (4 конфорки) | **← следующая** |
+| 8–12 | TECH-3 → TECH-2 → TECH-1 → TECH-5.1 → seatRate | ожидает |
 
-## 6. LOGIC-8.4.1 — контекст
+## 6. LOGIC-8.4.1 — ЗАКРЫТ (a3b37cc)
 
 **Цель:** станция повара (фиксированная клетка за плитой по rotation), возврат после доставки.
 
@@ -171,6 +166,11 @@ LOGIC-8.4.1 (в работе) → VISUAL-8.5 → TECH-3 → TECH-2 → TECH-1 �
 31. **`updateChef` — прогресс независим от позиции.** Блокировка готовки при отсутствии на станции ломает `chefRouting`/`stoveBurners`/`kitchenBuffers`/`waiterCarry`. Возврат — `moveChef`, но `order.progress +=` не блокировать.
 32. **`industrialStove` — скин, не kind.** Для 1×2 смотреть `appliedStoveSkins` (`skinId === 'industrialStove'`), не только `kind`.
 33. **Техдолг task-файлов.** `LOGIC-8.4.1-chef-station.md`: §ФАЗА 0 «main» (устарело), §ФАЗА 1 «adjacentCells в grid.ts» (в `tick.ts:22`), «Git запрещён» (B, если A). Поправить после 8.4.1.
+34. **Git-правило A (уточнение урока 30).** Kimi — read-only git (`status/log/diff/grep/show/branch`), пользователь — write (`add/commit/push/checkout/merge`). **Не перекладывать read на пользователя** — ошибка процесса.
+35. **`updateChef` — early return после order-completion** откладывает handoff на 1 тик. Приемлемо, не оптимизировать.
+36. **`npm test` ≠ `npm run build`.** Unit-зелёный (vitest/esbuild) не гарантирует типы. Build = `tsc --noEmit && vite build` — отдельный гейт.
+37. **«ветка = main» из handoff — снимок.** Перед merge проверить `git log --oneline main..HEAD`.
+38. **Обрезанный diff в консоли** (`type` рвёт длинный вывод). Верификация — через тесты как ground truth.
 
 ## 9. Что НЕ трогать без подтверждения
 
@@ -228,10 +228,11 @@ git log --oneline -5
 npm test
 ```
 
-**Ожидание на 2026-11-25 (до ответа Kimi):**
-- ветка `logic-8.4.1-chef-station`, clean или modified (Phase 2 в работе)
-- `ddc4afe → 7331a67 → a06f277 → 09afd32 → 3cbb59d`
-- 374/374
+**Ожидание на 2026-11-25 (после LOGIC-8.4.1):**
+- main, clean, ahead 0
+- `a3b37cc → 65fab54 → 192a5b6 → ddc4afe → 7331a67`
+- 380/380 unit, 53/53 e2e, build ✅
+- Ветка `logic-8.4.1-chef-station` отсутствует, тег `archive/logic-8.4.1-chef-station` = `65fab54`
 
 **Если разошлось:** стоп, разбор по §11.
 
