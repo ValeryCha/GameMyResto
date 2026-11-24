@@ -11,7 +11,7 @@ import { createAppearance } from '../render3d/appearance';
 import { arrivalRate, patienceMultiplier } from './guestFlow';
 import { cookingProgress, waiterCarryCapacity, waiterMovementSteps } from './staff';
 import { counterForChef, counterForWaiter, ensureOrderCounter, serviceCounters } from './counterService';
-import { counterDeliveryInterval, kitchenDistance, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
+import { counterDeliveryInterval, kitchenDistance, stoveBurners, stoveForChef, synchronizeChefStoves, withinChefRange } from './kitchen';
 import { transitionOrder } from './orderDiagnostics';
 import { beginPeak, finishPeak, recordPeakArrival, recordPeakSeated, recordPeakUnhappy } from './peak';
 import { advanceQueuedGuest, enqueueGuest, seatQueuedGuest } from './queue';
@@ -332,43 +332,64 @@ function orderFor(state: GameState, employee: Employee): Order | undefined {
 
 function updateKitchenOrders(state: GameState): void {
   const chefs = state.employees.filter((employee) => employee.role === 'chef');
-  const freeAssignedStove = () => chefs.map((chef) => stoveForChef(state, chef)).find((stove) => stove &&
-    !state.orders.some((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id));
-  for (const queued of state.orders.filter((item) => item.state === 'waitingCook' && !item.stoveId)) {
-    const stove = freeAssignedStove();
-    if (!stove) break;
-    queued.stoveId = stove.id;
-    queued.chefId = chefs.find((chef) => chef.stoveId === stove.id)?.id;
-  }
-  // Прогресс начисляется один раз за тик и только на плите с закреплённым поваром.
-  for (const order of state.orders.filter((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId)) {
-    const chef = chefs.find((employee) => employee.stoveId === order.stoveId);
-    if (!chef) continue;
-    order.chefId = chef.id;
-    const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
-    if (order.progress < dish.cookSeconds) {
-      transitionOrder(order, 'cooking', state.tick);
-      order.progress = Math.min(dish.cookSeconds, order.progress + cookingProgress(state.upgrades.cooking));
-      order.deliveryProgress ??= 0;
+  const capacity = stoveBurners(state);
+  const cookingAt = (order: Order, chef: Employee, stoveId: string) =>
+    ['waitingCook', 'cooking'].includes(order.state) && order.stoveId === stoveId &&
+    (!order.chefId || order.chefId === chef.id);
+  // Восстанавливаем массив после старого сейва и отбрасываем отменённые/чужие заказы.
+  for (const chef of chefs) {
+    const stove = stoveForChef(state, chef);
+    if (!stove) { chef.activeOrders = []; chef.taskId = undefined; continue; }
+    const active = [...new Set(chef.activeOrders ?? [])].filter((id) => {
+      const order = state.orders.find((item) => item.id === id);
+      return order && cookingAt(order, chef, stove.id);
+    }).slice(0, capacity);
+    for (const order of state.orders) {
+      if (active.length >= capacity) break;
+      if (!active.includes(order.id) && cookingAt(order, chef, stove.id)) active.push(order.id);
     }
+    chef.activeOrders = active;
+    for (const id of active) {
+      const order = state.orders.find((item) => item.id === id)!;
+      order.chefId = chef.id;
+      order.stoveId = stove.id;
+    }
+  }
+  // Свободные конфорки заполняются только заказами без плиты; связка повар–плита не нарушается.
+  for (const queued of state.orders.filter((item) => item.state === 'waitingCook' && !item.stoveId)) {
+    const chef = chefs.find((employee) => stoveForChef(state, employee) && (employee.activeOrders?.length ?? 0) < capacity);
+    const stove = chef && stoveForChef(state, chef);
+    if (!chef || !stove) break;
+    queued.stoveId = stove.id;
+    queued.chefId = chef.id;
+    chef.activeOrders!.push(queued.id);
   }
 }
 
 function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true): void {
   const stove = stoveForChef(state, chef);
-  if (!stove) { chef.taskId = undefined; return; }
-  const stoveFree = () => !state.orders.some((item) =>
-    ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id);
+  if (!stove) { chef.activeOrders = []; chef.taskId = undefined; return; }
+  const activeOrders = (chef.activeOrders ?? []).map((id) => state.orders.find((order) => order.id === id))
+    .filter((order): order is Order => Boolean(order && order.stoveId === stove.id &&
+      ['waitingCook', 'cooking'].includes(order.state)));
+  chef.activeOrders = activeOrders.map((order) => order.id);
+  // Каждая занятая конфорка прогрессирует независимо; taskId зарезервирован для выдачи.
+  for (const order of activeOrders) {
+    const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
+    if (order.progress >= dish.cookSeconds) continue;
+    transitionOrder(order, 'cooking', state.tick);
+    order.progress = Math.min(dish.cookSeconds, order.progress + cookingProgress(state.upgrades.cooking));
+    order.deliveryProgress ??= 0;
+  }
+  const stoveFree = () => (chef.activeOrders?.length ?? 0) < stoveBurners(state);
   const cooked = (order: Order) => {
     const dish = DISHES.find((item) => item.id === order.dishId) ?? DISHES[0];
-    return order.state === 'cooking' && order.stoveId === stove.id && order.progress >= dish.cookSeconds;
+    return chef.activeOrders!.includes(order.id) && order.state === 'cooking' && order.progress >= dish.cookSeconds;
   };
-  let activeOrder = orderFor(state, chef);
-  if (activeOrder && activeOrder.stoveId !== stove.id) { chef.taskId = undefined; activeOrder = undefined; }
   let deliveryCredit = allowExtraDelivery ? 1 / counterDeliveryInterval(state) : Math.min(1, 1 / counterDeliveryInterval(state));
   while (deliveryCredit > 0) {
     const current = orderFor(state, chef);
-    const order = current && cooked(current) ? current : state.orders.find((candidate) => cooked(candidate) &&
+    const order = current && cooked(current) ? current : activeOrders.find((candidate) => cooked(candidate) &&
       !state.employees.some((other) => other.id !== chef.id && other.role === 'chef' && other.taskId === candidate.id));
     if (!order) break;
     chef.taskId = order.id;
@@ -391,6 +412,7 @@ function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true)
     transitionOrder(order, 'waitingDelivery', state.tick);
     order.counterId = counter.id;
     order.deliveryProgress = 0;
+    chef.activeOrders = chef.activeOrders!.filter((id) => id !== order.id);
     chef.taskId = undefined;
   }
 
@@ -407,14 +429,15 @@ function updateChef(state: GameState, chef: Employee, allowExtraDelivery = true)
     if (nearby || (meetingPoint && moveChef(state, chef, meetingPoint, stove) === 'arrived')) {
       transitionOrder(handoff, 'waitingCook', state.tick);
       handoff.stoveId = stove.id;
+      handoff.chefId = chef.id;
       handoff.assignedTo = undefined;
       waiter.taskId = undefined;
-      chef.taskId = handoff.id;
+      chef.activeOrders!.push(handoff.id);
     }
     return;
   }
 
-  if (activeOrder && ['waitingCook', 'cooking'].includes(activeOrder.state)) {
+  if (chef.activeOrders.length) {
     const target = adjacentCells(state, stove)
       .map((point) => ({ point, path: chefRouteTo(state, chef, point, stove) }))
       .filter((candidate) => candidate.path.length > 0 || samePoint(chef.position, candidate.point))
@@ -524,7 +547,7 @@ function updateWaiter(state: GameState, waiter: Employee): void {
     if (!chef) {
       chef = state.employees.find((employee) => {
         const stove = stoveForChef(state, employee);
-        return stove && !state.orders.some((item) => ['waitingCook', 'cooking'].includes(item.state) && item.stoveId === stove.id);
+        return stove && (employee.activeOrders?.length ?? 0) < stoveBurners(state);
       });
       activeOrder.chefId = chef?.id;
     }

@@ -18,7 +18,7 @@ import { inheritExpandedWallpapers } from '../simulation/expansion';
 import { normalizePeakState } from '../simulation/peak';
 import { normalizeQueueState } from '../simulation/queue';
 import { ensureOrderCounter } from '../simulation/counterService';
-import { synchronizeChefStoves } from '../simulation/kitchen';
+import { stoveBurners, synchronizeChefStoves } from '../simulation/kitchen';
 
 const CURRENT_STATE_VERSION = 2;
 function captureQuestBaseline(state: GameState): GameState['questBaseline'] {
@@ -184,6 +184,20 @@ export function normalizeState(state: GameState): GameState {
     if (order.state === 'waitingDelivery') ensureOrderCounter(state, order);
   }
   state.orders = state.orders.filter((order) => order.state !== 'delivered' || state.customers.some((customer) => customer.id === order.customerId));
+  // Старые сейвы хранили готовку только в заказах: восстанавливаем массив конфорок без превышения лимита.
+  for (const chef of state.employees.filter((employee) => employee.role === 'chef')) {
+    const savedIds = Array.isArray(chef.activeOrders) ? chef.activeOrders.filter((id) => typeof id === 'string') : [];
+    const validOrder = (id: string) => state.orders.find((order) => order.id === id &&
+      ['waitingCook', 'cooking'].includes(order.state) && order.stoveId === chef.stoveId &&
+      (!order.chefId || order.chefId === chef.id));
+    chef.activeOrders = [...new Set(savedIds)].filter(validOrder).slice(0, stoveBurners(state));
+    if (chef.stoveId) for (const order of state.orders) {
+      if (chef.activeOrders.length >= stoveBurners(state)) break;
+      if (!chef.activeOrders.includes(order.id) && validOrder(order.id)) chef.activeOrders.push(order.id);
+    }
+    for (const id of chef.activeOrders) state.orders.find((order) => order.id === id)!.chefId = chef.id;
+    if (chef.taskId && chef.activeOrders.includes(chef.taskId)) chef.taskId = undefined;
+  }
   for (const waiter of state.employees.filter((employee) => employee.role === 'waiter')) {
     const savedIds = Array.isArray(waiter.orderIds) ? waiter.orderIds.filter((id) => typeof id === 'string') : [];
     const carriedIds = state.orders.filter((order) => order.state === 'waitingDelivery' && order.pickedUp && order.assignedTo === waiter.id).map((order) => order.id);
