@@ -1,9 +1,9 @@
 import { CATALOG } from '../content/coreContent';
 import { furnitureSkinById } from '../content/furnitureSkins';
-import type { CommandResult, FurnitureKind, GameState, Point } from './types';
+import type { CommandResult, Furniture, FurnitureKind, GameState, Point } from './types';
 import { findPath, furnitureCells, samePoint } from './grid';
 import { applyDecorationRating, decorationRating } from './rating';
-import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, synchronizeChefStoves, withinChefRange } from './kitchen';
+import { MAX_STOVES, nextStoveLevel, nextStovePrice, stoveCount, stoveStation, synchronizeChefStoves, withinChefRange } from './kitchen';
 
 function inside(state: GameState, point: Point): boolean {
   return point.x >= 0 && point.y >= 0 && point.x < state.width && point.y < state.height;
@@ -23,10 +23,19 @@ export function placeFurniture(state: GameState, kind: FurnitureKind, position: 
   if (state.level < requiredLevel) return { ok: false, reason: `Нужен ${requiredLevel} уровень` };
   const price = kind === 'stove' ? nextStovePrice(state) : item.price;
   if (state.coins < price) return { ok: false, reason: 'Недостаточно монет' };
+  const furniture: Furniture = { id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation: 0 };
+  state.furniture.push(furniture);
+  if (kind === 'stove') {
+    const station = stoveStation(furniture, state);
+    if (!station) {
+      state.furniture.pop();
+      return { ok: false, reason: 'Нет места для повара' };
+    }
+    furniture.chefStation = station;
+  }
   state.coins -= price;
   state.popularity = Math.min(1000, state.popularity + item.rating);
   if (kind === 'plant') applyDecorationRating(state, decorationRating(CATALOG.plant.price));
-  state.furniture.push({ id: `${kind}-${state.tick}-${state.furniture.length}`, kind, position: { ...position }, rotation: 0 });
   if (kind === 'stove') synchronizeChefStoves(state);
   return { ok: true };
 }
@@ -85,6 +94,12 @@ export function moveFurniture(state: GameState, id: string, position: Point): Co
     return result;
   }
   if (item.kind === 'stove') {
+    const station = stoveStation(item, state);
+    if (!station) {
+      item.position = previous;
+      return { ok: false, reason: 'Нет места для повара' };
+    }
+    item.chefStation = station;
     const directions: Point[] = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
     const candidates = new Map<string, Point>();
     for (const cell of furnitureCells(item, state)) for (const direction of directions) {
