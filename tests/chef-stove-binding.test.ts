@@ -158,6 +158,18 @@ describe('строгая связь повара и плиты', () => {
     });
   }
 
+  it('три повара делят шесть заказов поровну', () => {
+    const state = createGame();
+    equipKitchen(state, 3);
+    for (let index = 1; index <= 6; index += 1) {
+      state.orders.push({ id: `balanced-${index}`, customerId: `balanced-guest-${index}`, state: 'waitingCook', progress: 0, dishId: 'soup' });
+    }
+    advanceSimulation(state);
+    for (const chef of state.employees.filter((employee) => employee.role === 'chef')) {
+      expect(chef.activeOrders).toHaveLength(2);
+    }
+  });
+
   it('сохранение устраняет дубли и битые связи, не отдавая занятую плиту', () => {
     const state = createGame();
     state.furniture.push({ id: 'stove-2', kind: 'stove', position: { x: 3, y: 1 }, rotation: 0 });
