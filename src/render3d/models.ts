@@ -57,12 +57,14 @@ function chairModel(skinId?: string): THREE.Group {
   return group;
 }
 
+const BURNER_POSITIONS = [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]] as const;
+
 function stoveModel(skinId?: string): THREE.Group {
   const group = new THREE.Group();
   const colors = skinColors(skinId);
   box(group, [0.9, 0.78, 0.8], [0, 0.4, 0], colors.primary);
   box(group, [0.92, 0.09, 0.82], [0, 0.82, 0], colors.secondary);
-  for (const [x, z] of [[-0.22, -0.2], [0.22, -0.2], [-0.22, 0.2], [0.22, 0.2]]) {
+  for (const [x, z] of BURNER_POSITIONS) {
     cylinder(group, skinId === 'electricStove' || skinId === 'futureStove' ? 0.14 : 0.13, 0.035, [x, 0.885, z], skinId === 'futureStove' ? colors.accent : 0x161b1d);
   }
   if (skinId === 'grillStove') for (let x = -0.35; x <= 0.35; x += 0.14) box(group, [0.045, 0.05, 0.7], [x, 0.9, 0], colors.accent);
@@ -72,13 +74,28 @@ function stoveModel(skinId?: string): THREE.Group {
   } else box(group, [0.54, 0.35, 0.025], [0, 0.4, 0.413], colors.secondary);
   if (skinId === 'futureStove') box(group, [0.82, 0.055, 0.04], [0, 0.72, 0.43], colors.accent);
   for (const x of [-0.25, 0, 0.25]) cylinder(group, 0.045, 0.05, [x, 0.69, 0.43], colors.accent).rotation.x = Math.PI / 2;
-  const pan = new THREE.Group();
-  cylinder(pan, 0.19, 0.065, [-0.22, 0.97, -0.2], 0x252b2d);
-  box(pan, [0.3, 0.045, 0.07], [-0.22, 0.98, 0.04], dark);
-  pan.visible = false; group.add(pan);
-  const flame = new THREE.Group();
-  for (const [x, z, height, color] of [[-0.28, -0.2, 0.12, 0xff9d32], [-0.17, -0.2, 0.15, 0xffc438], [-0.22, -0.13, 0.11, 0xff7728]] as const) cylinder(flame, 0.045, height, [x, 0.91, z], color, 0.005);
-  flame.visible = false; group.add(flame); group.userData.pan = pan; group.userData.flame = flame;
+  const pans: THREE.Group[] = [];
+  const flames: THREE.Group[] = [];
+  for (const [x, z] of BURNER_POSITIONS) {
+    const pan = new THREE.Group();
+    cylinder(pan, 0.19, 0.065, [x, 0.97, z], 0x252b2d);
+    box(pan, [0.3, 0.045, 0.07], [x, 0.98, z + 0.24], dark);
+    pan.visible = false;
+    group.add(pan);
+    pans.push(pan);
+
+    const flame = new THREE.Group();
+    for (const [offsetX, offsetZ, height, color] of [[-0.06, 0, 0.12, 0xff9d32], [0.05, 0, 0.15, 0xffc438], [0, 0.07, 0.11, 0xff7728]] as const) {
+      cylinder(flame, 0.045, height, [x + offsetX, 0.91, z + offsetZ], color, 0.005);
+    }
+    flame.visible = false;
+    group.add(flame);
+    flames.push(flame);
+  }
+  group.userData.pans = pans;
+  group.userData.flames = flames;
+  group.userData.pan = pans[0];
+  group.userData.flame = flames[0];
   return group;
 }
 
