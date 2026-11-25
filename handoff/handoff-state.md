@@ -24,12 +24,10 @@
 - **Тесты:** `npm test` (vitest), `npx playwright test` (e2e), `npm run build`
 
 **Роли:**
-1. **Kimi Code** — пишет код по task-файлам, Phase 0–4, **git read-only**
+1. **Kimi Code** — пишет код по task-файлам, Phase 2–4,
    (`status/log/diff/grep/show/branch` — можно; `add/commit/push/checkout/reset/restore/merge/tag` — нельзя).
-2. **DeepSeek** — архитектура, task-файлы, ревью диффов, обновление handoff.
-3. **Пользователь** — VS Code, git write, запуск тестов.
-
-**Git-правило A:** read-only git — Kimi, write — пользователь. **Не перекладывать read-команды на пользователя** (ошибка процесса, съедает лимиты DeepSeek).
+2. **DeepSeek** — архитектура, логика, механика, task-файлы, ревью диффов, обновление handoff.
+3. **Пользователь** — VS Code, git status/log/diff/grep/show, запуск тестов.
 
 **Правило эффективности:** короткие ответы. Лимиты тратятся.
 
@@ -202,17 +200,18 @@ VISUAL-8.5 → LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 �
 29. Станция повара — привязка к `rotation` плиты.
 
 ### Из сессии 2026-11-25
-30. **Git-правило Kimi — A (read-only) по умолчанию.** Переключение A→B создаёт friction: пользователь выполняет git по запросу Kimi → тратит время и лимиты DeepSeek. Task-файлы под A.
+30. ~~**Git-правило Kimi — A (read-only) по умолчанию.**~~ **УСТАРЕЛО, см. урок 41.** Схема «Kimi read-only git, пользователь write» заменена на «Kimi — только код (Phase 2–4), вся read-разведка на пользователе».
 31. **`updateChef` — прогресс независим от позиции.** Блокировка готовки при отсутствии на станции ломает `chefRouting`/`stoveBurners`/`kitchenBuffers`/`waiterCarry`. Возврат — `moveChef`, но `order.progress +=` не блокировать.
 32. **`industrialStove` — скин, не kind.** Для 1×2 смотреть `appliedStoveSkins` (`skinId === 'industrialStove'`), не только `kind`.
 33. **Техдолг task-файлов.** `LOGIC-8.4.1-chef-station.md`: §ФАЗА 0 «main» (устарело), §ФАЗА 1 «adjacentCells в grid.ts» (в `tick.ts:22`), «Git запрещён» (B, если A). Поправить после 8.4.1.
-34. **Git-правило A (уточнение урока 30).** Kimi — read-only git, пользователь — write. **Не перекладывать read на пользователя** — ошибка процесса.
+34. ~~**Git-правило A (уточнение урока 30).** Kimi — read-only git, пользователь — write. Не перекладывать read на пользователя.~~ **УСТАРЕЛО, см. урок 41.** Новая схема: read-разведка на пользователе, Kimi получает готовые факты.
 35. **`updateChef` — early return после order-completion** откладывает handoff на 1 тик. Приемлемо, не оптимизировать.
 36. **`npm test` ≠ `npm run build`.** Unit-зелёный (vitest/esbuild) не гарантирует типы. Build = `tsc --noEmit && vite build` — отдельный гейт.
 37. **«ветка = main» из handoff — снимок.** Перед merge проверить `git log --oneline main..HEAD`.
 38. **Обрезанный diff в консоли** (`type` рвёт длинный вывод). Верификация — через тесты как ground truth.
 39. **«Первый до лимита» — антипаттерн распределения.** При 3+ поварах первый забирает всё до `stoveBurners`, остальные стоят. Фикс — `pickLeastLoadedChef` (min activeOrders + tie-break по id) в **обеих** точках: `updateKitchenOrders` (waitingCook) + `updateWaiter` (takingOrder). Не только одна — иначе перекос вернётся через handoff.
 40. **Debug-сетап для чистой игры.** Если баг не воспроизводится в unit-тестах и нет старого сейва — временный `__debug` в `main.ts` под `import.meta.env.DEV`: методы `setup3x3`, `setLevel`, `setCoins`, `dump`. **Обязательно удалить после диагностики** (`git checkout -- src/main.ts`). Плюс: `state.orders = []` после сброса `state.furniture/employees` — иначе зомби-заказы на несуществующих плитах.
+41. **Read-разведка — на пользователе, не на Kimi.** Kimi тратит лимиты подписки на `git grep/show/log`, которые пользователь делает за 5 секунд и бесплатно. Kimi получает **готовые факты** (цитаты файлов, списки тестов), а не команды «сходи и посмотри». Экономия — 1–2 сессии на задачу. Заменяет прежнее «Git-правило A» (уроки 30, 34 — устарели).
 
 ## 9. Что НЕ трогать без подтверждения
 
@@ -263,7 +262,7 @@ VISUAL-8.5 → LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 �
 > «Прочитал handoff. Отвечаю без кода:
 > 1. Состояние: main = d84dbe2, origin/main = d84dbe2, 381/381, build 0, e2e 53/53.
 > 2. LOGIC-8.4.1 закрыт (a3b37cc). fix-balance закрыт (d84dbe2) — pickLeastLoadedChef в 2 точках, 3 повара работают.
-> 3. Git-правило Kimi: A (read-only) — **подтверди, A или B?**
+> 3. Kimi — только код (Phase 2–4). Read-разведка (`git status/log/grep/show`) — на пользователе, вывод идёт DeepSeek. Подтверди, что схема принята.
 > 4. Инварианты: не блокировать готовку на станции, industrialStove = скин, fallback null, pickLeastLoadedChef в 2 точках.
 > 5. Нельзя трогать: chef-stove-binding (18), stoveBurners, chefRouting, kitchenBuffers, waiterCarry, movement.test, questPanel, progression (applyLevels).
 > Если A/B подтверждено и факты совпали — идём в Шаг 0.»

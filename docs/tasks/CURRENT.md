@@ -65,7 +65,7 @@
 8. **DeepSeek** обновляет handoff + CURRENT.
 
 **Правила:**
-- **Git-правило Kimi: A (read-only)** по умолчанию — `git status/log/diff/grep/show/branch` может, write — нет. Task-файлы под A. **Подтвердить A/B в начале сессии.**
+- **Kimi — только код.** Read-разведка (`git status/log/diff/grep/show`) — на пользователе, вывод идёт DeepSeek. Kimi получает готовые факты (цитаты файлов, списки тестов), не команды «сходи и посмотри».
 - Запреты на функции, не на файлы.
 - Phase 1 — `git grep`, не по памяти.
 - Полный `npx playwright test` — только на финальном гейте.
