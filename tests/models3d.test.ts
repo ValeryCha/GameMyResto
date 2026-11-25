@@ -81,4 +81,20 @@ describe('procedural models', () => {
     expect(guest.userData.patienceRing).toBeInstanceOf(THREE.Mesh);
     expect(guest.userData.patienceBack).toBeUndefined();
   });
+  it('содержит четыре конфорки с отдельными огнём и сковородкой', () => {
+    const stove = createFurnitureMesh({ id: 'stove', kind: 'stove', position: { x: 1, y: 1 }, rotation: 0 }, classicSkin);
+    expect(stove.userData.flames).toHaveLength(4);
+    expect(stove.userData.pans).toHaveLength(4);
+    for (const flame of stove.userData.flames) {
+      expect(flame).toBeInstanceOf(THREE.Group);
+      expect(flame.visible).toBe(false);
+    }
+    for (const pan of stove.userData.pans) {
+      expect(pan).toBeInstanceOf(THREE.Group);
+      expect(pan.visible).toBe(false);
+    }
+    expect(stove.userData.flame).toBe(stove.userData.flames[0]);
+    expect(stove.userData.pan).toBe(stove.userData.pans[0]);
+  });
+
 });

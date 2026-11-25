@@ -745,10 +745,15 @@ export class RestaurantWorld {
         updateDoorVisual(model, open, 1 / 60);
       }
       if (item.kind === 'stove') {
-        const cooking = this.state.orders.some((order) => order.state === 'cooking' && order.stoveId === item.id);
-        model.userData.pan.visible = cooking;
-        model.userData.flame.visible = cooking;
-        if (cooking) model.userData.flame.scale.y = 0.9 + Math.sin(time / 90) * 0.1;
+        const cookingCount = this.state.orders.filter((order) => order.state === 'cooking' && order.stoveId === item.id).length;
+        const pans = (model.userData.pans as THREE.Group[] | undefined) ?? [];
+        const flames = (model.userData.flames as THREE.Group[] | undefined) ?? [];
+        pans.forEach((pan, i) => { pan.visible = i < cookingCount; });
+        flames.forEach((flame, i) => {
+          const active = i < cookingCount;
+          flame.visible = active;
+          if (active) flame.scale.y = 0.9 + Math.sin((time + i * 120) / 90) * 0.1;
+        });
       }
       if (item.kind === 'counter') syncCounterPlates(model, counterPlateDishes(this.state, item.id));
     }
