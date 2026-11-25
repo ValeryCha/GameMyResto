@@ -14,7 +14,12 @@ test('уровень бесплатно расширяет ресторан и �
   });
   await page.reload();
   await page.getByRole('button', { name: 'Играть' }).click();
-  await page.waitForTimeout(1000);
+  await page.waitForFunction(() => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary') || 'null');
+    if (!save) return false;
+    const ids = (save.state.appliedWallpapers || []).map((w: { wallCellId: string }) => w.wallCellId);
+    return ids.includes('north-8') && ids.includes('north-9');
+  }, undefined, { timeout: 15000 });
   await page.getByRole('button', { name: 'Меню', exact: true }).click();
   const expanded = await page.evaluate(() => JSON.parse(localStorage.getItem('moy-restoran:primary')!).state);
   expect(expanded.appliedWallpapers).toEqual(expect.arrayContaining([

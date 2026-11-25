@@ -41,7 +41,11 @@ test.describe('LOGIC-6.3 — lifecycle квестов', () => {
 
     // После reload + несколько тиков processProgression вызовется, экономика разблокируется
     await page.getByRole('button', { name: 'Играть' }).click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      const save = JSON.parse(localStorage.getItem('moy-restoran:primary') || 'null');
+      return save && Array.isArray(save.state.completedQuestIds)
+        && save.state.completedQuestIds.includes('quest-1');
+    }, undefined, { timeout: 15000 });
     await page.getByRole('button', { name: 'Прогресс', exact: true }).click();
     const economyAfter = page.getByRole('complementary', { name: 'Прогресс ресторана' })
       .locator('.side-quest-item').filter({ hasText: 'Заработайте 5000 монет с блюд' });
@@ -66,7 +70,11 @@ test.describe('LOGIC-6.3 — lifecycle квестов', () => {
     });
 
     await page.getByRole('button', { name: 'Играть' }).click();
-    await page.waitForTimeout(800); // несколько тиков
+    const initialTick69 = ((await readSave(page)).state.tick as number) ?? 0;
+    await page.waitForFunction((t) => {
+      const save = JSON.parse(localStorage.getItem('moy-restoran:primary') || 'null');
+      return save && (save.state.tick as number) >= t;
+    }, initialTick69 + 2, { timeout: 15000 });
 
     const after = await readSave(page);
     const coinsAfter = after.state.coins as number;
@@ -92,7 +100,11 @@ test.describe('LOGIC-6.3 — lifecycle квестов', () => {
   });
 
   await page.getByRole('button', { name: 'Играть' }).click();
-  await page.waitForTimeout(800);
+  const initialTick95 = ((await readSave(page)).state.tick as number) ?? 0;
+  await page.waitForFunction((t) => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary') || 'null');
+    return save && (save.state.tick as number) >= t;
+  }, initialTick95 + 2, { timeout: 15000 });
 
   const before = await readSave(page);
   const coinsBefore = before.state.coins as number;
@@ -126,7 +138,11 @@ test.describe('LOGIC-6.3 — lifecycle квестов', () => {
   // Повторный reload — processSideQuests не должен начислять ещё раз
   await page.reload();
   await page.getByRole('button', { name: 'Играть' }).click();
-  await page.waitForTimeout(1500);
+  const initialTick129 = ((await readSave(page)).state.tick as number) ?? 0;
+  await page.waitForFunction((t) => {
+    const save = JSON.parse(localStorage.getItem('moy-restoran:primary') || 'null');
+    return save && (save.state.tick as number) >= t;
+  }, initialTick129 + 1, { timeout: 15000 });
 
   const afterSecond = await readSave(page);
   const coinsSecond = afterSecond.state.coins as number;
