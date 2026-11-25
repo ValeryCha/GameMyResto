@@ -31,21 +31,31 @@
 
 **Правило эффективности:** короткие ответы. Лимиты тратятся.
 
-## 2. Текущее состояние (на конец 2026-11-25, после VISUAL-8.5)
+## 2. Текущее состояние (на конец 2026-11-25, после LOGIC-9 A1)
 
 | Ветка | Коммит | Статус |
 |---|---|---|
-| main | f8266a3 | ✅ HEAD, merge VISUAL-8.5, запушен |
-| origin/main | f8266a3 | ✅ sync |
+| main | 0e72565 | ✅ HEAD, merge LOGIC-9 A1, запушен |
+| origin/main | 0e72565 | ✅ sync |
 | archive/logic-8.4.1-chef-station | 65fab54 | ✅ тег |
 | archive/fix-chef-3x3-diagnostic | 0f12631 | ✅ тег |
 | archive/visual-8.5-stove-burners | c82b9e5 | ✅ тег |
+| archive/logic-9-waiter-bottleneck | a38c9b0 | ✅ тег |
 | master | 0bf062a | реликт (backlog) |
 
 **Тесты:** unit **382/382**, e2e **53/53**, build ✅ (exit 0).
 **`git status`:** на main, clean, ahead 0.
 
 ## 3. Что сделано по сессиям
+
+### 2026-11-25 — LOGIC-9 A1 (закрыт, `0e72565`)
+
+- **Проблема:** метрики D показали waiter bottleneck — waitingWaiter=20.6, F8_burnersUsageRate=13%, официант занят 94%, пропускная 0.28 trips/тик.
+- **Фикс `a38c9b0`:** в `updateWaiter` блок `takingOrder` заменён на 4 строки — `transitionOrder → waitingCook`, `assignedTo = undefined`, `taskId = undefined`, `return`. Повар подхватывает через `pickLeastLoadedChef` (уже работает после fix-balance). Handoff-блок в `updateChef` не тронут (fallback).
+- **Метрики после A1:** F7 cycle **13.7 → 4.6** (×3 быстрее), F9 throughput **0.28 → 0.86/тик** (×3), takingOrder 2.05 → 0.49 (×4 меньше), F2 idle 6% → 17.6%.
+- **Ограничение:** throughput **0.43 гостей/тик** (F5_seatsFillRate=91%), waitingWaiter=18.33. Кухня не bottleneck (`cookSeconds`=6-15, cooking=1.51). **Столы / eatTime ≈ 98 тиков = потолок** (урок 43).
+- Тест `waiterCarry.test.ts:114` обновлён (1×1 → 3×3×3, чтобы кухня не была bottleneck)
+- Merge `0e72565` (`--no-ff`), tag `archive/logic-9-waiter-bottleneck` = `a38c9b0`
 
 ### 2026-11-25 — VISUAL-8.5 (закрыт, `f8266a3`)
 
@@ -95,89 +105,62 @@
 ## 5. Roadmap
 
 ```
-LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
+TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 ```
 
 
 | # | Задача | Статус |
 |---|---|---|
 | 1–7 | 8.1–8.4.1 + fix-balance | ✅ |
-| 8 | **VISUAL-8.5** (4 конфорки) | ✅ f8266a3 |
-| 9 | **LOGIC-9** (waiter bottleneck, Phase 0 замеры) | **← следующая** |
-| 10–13 | TECH-3 → TECH-2 → TECH-1 → TECH-5.1 | ожидает |
-| 14 | Пакетная чистка веток | отложено |
+| 8 | VISUAL-8.5 (4 конфорки) | ✅ f8266a3 |
+| 9 | **LOGIC-9 A1** (waiter queue) | ✅ 0e72565 |
+| 10 | **TECH-3** (`catalog-decorations.spec.ts`, разобрать `4394b2d`) | **← следующая** |
+| 11–13 | TECH-2 → TECH-1 → TECH-5.1 | ожидает |
+| 14 | LOGIC-10 (eating time / table turnover) | backlog, опционально |
+| 15 | Пакетная чистка веток | отложено |
 
 ## 6. LOGIC-8.4.1 — ЗАКРЫТ (a3b37cc)
 
 Справка: `Furniture.chefStation?: Point` (опциональный, старые сейвы = undefined). `stoveStation(stove, state)` — rotation 0→юг, 90→запад, 180→север, 270→восток; fallback adjacentCells → null. `placeFurniture` / `moveFurniture` проверяют станцию (`reason: 'Нет места для повара'`). `updateChef` — возврат через `moveChef`, `order.progress +=` **не блокируется**. `industrialStove` 1×2 — через `appliedStoveSkins`.
 
-## 6.1. LOGIC-9 — waiter bottleneck (полный бэклог)
+## 6.1. LOGIC-9 — ЗАКРЫТ (A1, `0e72565`)
 
-**Статус:** бэклог. Phase 0 (замеры) — до кода. Решение о варианте — по факту, не по гипотезе (урок 8).
+**Итог:** A1 (WaiterQueue) реализован в `0e72565`. Официант больше не bottleneck: cycle **13.7 → 4.6** (×3), throughput **0.28 → 0.86 trips/тик** (×3), `takingOrder` 2.05 → 0.49. Остаточный потолок — **столы / eatTime ≈ 98 тиков** (F5=91%, F13.cooking=1.51 при `cookSeconds`=6–15). Метрики D и A1 подтвердили и диагноз, и результат.
 
-**Триггер:** после fix-balance поток гостей вырос (пользователь расширил ресторан + столы). Возможно, официант стал узким местом.
+**Код метрик** `__debug.metrics` (F1–F17) был временным (урок 40), удалён из `main.ts`. Если нужен для LOGIC-10 или проверки A2/A3 — восстановить из тега `archive/logic-9-waiter-bottleneck` = `a38c9b0` (файл `src/main.ts` на том коммите).
 
-### Phase 0 — метрики (1 сессия, до кода)
+### Что сделано (A1)
 
-Замеры на живой игре (3 повара / 3 плиты / 3 стойки / 5 официантов, поток гостей высокий):
-- F1. `avgWaitTime` гостей (seated → delivered)
-- F2. `waiterIdleTime` (% простоя)
-- F3. `cookingTime` (waitingCook → cooked)
-- F4. `counterFullRate` (% времени, когда стойки полные)
-- F5. `occupiedSeats / guestLimit`
-- F6. `orders.length` в очереди
-- F7. `avgWaiterTripTime` (время одного цикла официанта)
-- F8. `avgBurnersUsedPerStove` (0–4) — среднее число занятых конфорок на плите
-- F9. `waiterAcceptCycleTime` — тиков от `takingOrder` до возврата официанта к следующему столу
-- F10. `chefFillRate` — % времени `chef.activeOrders.length === stoveBurners`
-- 
-**Метод:** временный `__debug.dump()` (как в fix-balance) или новый `__debug.metrics()`. Удалить после.
+В `updateWaiter` блок `takingOrder` (~34 строки) заменён на 4:
+```ts
+if (order.state === 'takingOrder') {
+  transitionOrder(order, 'waitingCook', state.tick);
+  order.assignedTo = undefined;
+  waiter.taskId = undefined;
+  return;
+}
+```
+### Открытые варианты — backlog LOGIC-10
 
-**Интерпретация:**
-- `waiterIdleTime > 40%` → официант НЕ узкое место → категория A отпадает
-- `cookingTime` растёт, `waiterIdleTime` низкий → повара узкое место (категория E)
-- `counterFullRate > 60%` → стойки узкое место (категория B)
-- `occupiedSeats = guestLimit` + `orders.length` растёт → столики (категория C)
+**A1 ✅ реализован.** Остальные — в backlog, активировать по условию:
 
-### Категории идей (для сверки после Phase 0)
+| Условие | Вариант | Эффект | Цена |
+|---|---|---|---|
+| Хочется **сократить waitingWaiter** (18 → 10) | **A3 (Multi-drop)** — официант несёт 3 готовых за раз | waitingWaiter −30–40% | 1 сессия |
+| Хочется **сократить waitingWaiter** сильнее | **A2 (Multi-pickup)** — официант принимает 2-3 заказа за подход | waitingWaiter −50% | 2-3 сессии |
+| Хочется **больше throughput** | **LOGIC-10 (eating time / table turnover)** — сократить `eatTime` или увеличить столы | Throughput +20–40% | 1-2 сессии + дизайн |
+| Хочется **меньше queueRejected** (жалобы) | **D (waiterMovementSteps +1)** — официант быстрее ходит | queueRejected −20% | 1 правка |
+| **Не нужно** | A4 (FIFO), A5 (разделение ролей), B1–B3 (стойки), C1–C3 (уже работает), E1–E2 (повара уже быстрые) | — | — |
 
-**A. Официанты (приём/доставка):**
-- A1. **WaiterQueue** — официант переводит заказ в `waitingCook` сразу, без похода к повару. Убирается handoff. 1 сессия.
-- A2. **Multi-pickup** — официант принимает N заказов за один подход (идея пользователя). 2-3 сессии.
-- A3. **Multi-drop** — официант несёт N готовых за раз (`waiterCarryCapacity` = 1/2/3, проверить работает ли). Может уже работать.
-- A4. **FIFO-приоритизация** — официант идёт к самому старому заказу, а не к ближайшему. 1 сессия.
-- A5. **Разделение ролей** — приёмщик vs доставщик. Большая переделка, не рекомендую.
+**Правило:** перед выбором — **повторить метрики** (F1–F17 из `__debug.metrics`, восстановить из `archive/logic-9-waiter-bottleneck` = `a38c9b0`). После A1 bottleneck сместился (урок 43) — следующий фикс может быть не про официантов.
 
-**B. Стойки:**
-- B1. Больше слотов на стойку (`COUNTER_MAX_SLOTS = 3` → 4-5). Но `MAX_COUNTERS = 5`.
-- B2. Прямой handoff повар→официант без стойки (при малом расстоянии). Риск: `counterService.test`, `kitchenBuffers`.
-- B3. **Counter buffering** — официант кладёт заказ на стойку, повар берёт оттуда (симметрично A1). 1-2 сессии.
-
-**C. Столики/гости:**
-- C1. Расширение ресторана (игровое действие, не код).
-- C2. `arrivalRate` — быстрее приход (риск: перегруз).
-- C3. `guestLimit` — уже через покупку слотов.
-
-**D. Движение:**
-- D1. `waiterMovementSteps` +1 (ускорение). 1 правка, риск: `movement.test`.
-- D2. Умный путь. Уже есть `movement.test`, оптимизация — 1 сессия.
-
-**E. Повара:**
-- E1. `cookingProgress` быстрее (усилить `upgrades.cooking`). Риск: `kitchen.test`, `chef-stove-binding`.
-- E2. VISUAL-8.5 (4 конфорки) — уже следующая, может решить без отдельной задачи.
-
-### Правила LOGIC-9
-
-- **Phase 0 обязательна.** Без метрик — не выбираем вариант (урок 8).
-- **Не делать всё сразу.** Выбрать 1-2 идеи по результатам замеров.
-- **Один task-файл на вариант.** Не размывать.
-- **Проверять контракты:** `waiterCarry.test.ts` (8), `kitchenBuffers.test.ts` (8), `chef-stove-binding.test.ts` (18), `movement.test.ts` (14).
+**Не начинать LOGIC-10 без явной просьбы пользователя.** Это играбельный/дизайнерский вопрос, не технический.
 
 ## 7. TECH-1 — контекст (бэклог)
 
 Интеграционные тесты мебели. `FurnitureKind = 'door'|'stove'|'table'|'tableDouble'|'chair'|'plant'|'counter'`. Для каждого kind — e2e + unit. Добавлять только непокрытые.
 
-## 8. Уроки проекта (1–40)
+## 8. Уроки проекта (1–44)
 
 ### Базовые 1–29
 1. Перед удалением — `grep` + `npm test`.
@@ -224,6 +207,8 @@ LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 40. **Debug-сетап для чистой игры.** Если баг не воспроизводится в unit-тестах и нет старого сейва — временный `__debug` в `main.ts` под `import.meta.env.DEV`: методы `setup3x3`, `setLevel`, `setCoins`, `dump`. **Обязательно удалить после диагностики** (`git checkout -- src/main.ts`). Плюс: `state.orders = []` после сброса `state.furniture/employees` — иначе зомби-заказы на несуществующих плитах.
 41. **Read-разведка — на пользователе, не на Kimi.** Kimi тратит лимиты подписки на `git grep/show/log`, которые пользователь делает за 5 секунд и бесплатно. Kimi получает **готовые факты** (цитаты файлов, списки тестов), а не команды «сходи и посмотри». Экономия — 1–2 сессии на задачу. Заменяет прежнее «Git-правило A» (уроки 30, 34 — устарели).
 42. **`stoveBurners` ≠ фактическая загрузка конфорок.** При 3 плитах лимит 4 конфорки на повара, но фактически горит 1–3, потому что официант принимает 1 заказ за цикл, а отдаёт 4 (handoff). VISUAL-8.5 визуал корректен (огонь там, где готовится), но 4-я конфорка редко достижима — это waiter bottleneck (LOGIC-9), не баг визуала.
+43. **Bottleneck смещается после фикса.** После устранения waiter bottleneck (cycle 13.7→4.6, throughput ×3) throughput упёрся в столы (F5=91%, eatTime≈98 тиков). Перед следующим фиксом — повторить метрики: следующий bottleneck может быть другим. Подтверждено на LOGIC-9 A1.
+44. **LOGIC-9 A1 — «мгновенный waitingCook».** Официант принял заказ → сразу `waitingCook` без похода к повару. Повар подхватывает через `pickLeastLoadedChef` в `updateKitchenOrders`. Handoff-блок в `updateChef` — fallback для старых сейвов (dead-code после A1, безопасен). Не удалять без проверки старых сейвов.
 
 ## 9. Что НЕ трогать без подтверждения
 
@@ -246,7 +231,7 @@ LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 - **Ф5.** Повар без заказов не идёт на станцию (`updateChef` вызывает `returnToStation` только при `activeOrders.length > 0`). Визуально стоит не на своей клетке. Backlog, не блокер.
 - **Ф6.** Пакетная чистка локальных `logic-8.1/8.2/8.3`, `feat-counter-plates-visual` + remote `origin/logic-1-v3-specs`, `origin/wip-overnight` — теги `archive/*`.
 - **Ф7.** `4394b2d relax coins check` — разобрать для TECH-3.
-- **LOGIC-9 backlog:** waiter bottleneck (multi-pickup / waiterQueue). Phase 0 — замеры до кода.
+- **LOGIC-10 backlog:** после A1 waiter больше не bottleneck (cycle ×3), но waitingWaiter=18.33, throughput упёрся в столы (F5=91%, eatTime≈98). Варианты: A3 (Multi-drop, 1 сессия), A2 (Multi-pickup, 2-3 сессии), eating time / столы, D (waiterMovementSteps +1). Полная таблица в §6.1 и CURRENT «LOGIC-10 бэклог». **Не начинать без явной просьбы.**
 
 ## 11. Памятка по окружению
 
@@ -272,12 +257,12 @@ LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 **Первое сообщение** после прочтения этого файла + `handoff/CURRENT.md`:
 
 > «Прочитал handoff. Отвечаю без кода:
-> 1. Состояние: main = d84dbe2, origin/main = d84dbe2, 381/381, build 0, e2e 53/53.
-> 2. LOGIC-8.4.1 закрыт (a3b37cc). fix-balance закрыт (d84dbe2) — pickLeastLoadedChef в 2 точках, 3 повара работают.
-> 3. Kimi — только код (Phase 2–4). Read-разведка (`git status/log/grep/show`) — на пользователе, вывод идёт DeepSeek. Подтверди, что схема принята.
-> 4. Инварианты: не блокировать готовку на станции, industrialStove = скин, fallback null, pickLeastLoadedChef в 2 точках.
-> 5. Нельзя трогать: chef-stove-binding (18), stoveBurners, chefRouting, kitchenBuffers, waiterCarry, movement.test, questPanel, progression (applyLevels).
-> Если A/B подтверждено и факты совпали — идём в Шаг 0.»
+> 1. Состояние: main = 0e72565, origin/main = 0e72565, 382/382, build 0, e2e 53/53.
+> 2. Закрыты: LOGIC-8.4.1 (a3b37cc), fix-balance (d84dbe2), VISUAL-8.5 (f8266a3), **LOGIC-9 A1 (0e72565)** — waiter queue, cycle ×3, но столы = потолок.
+> 3. Схема: Kimi — только код (Phase 2–4). Read-разведка (git status/log/grep/show) на пользователе, вывод идёт DeepSeek. **Подтверди, что схема принята.**
+> 4. Инварианты: не блокировать готовку на станции (31), industrialStove = скин (32), pickLeastLoadedChef в 2 точках (39), BURNER_POSITIONS + flames[]/pans[] (42), takingOrder → waitingCook мгновенно (43 — не возвращать поход к повару).
+> 5. Нельзя трогать: chef-stove-binding (18), stoveBurners, chefRouting, kitchenBuffers, waiterCarry (8), movement.test, models3d.test.ts (8), order-lifecycle.test.ts, editorMode.test.ts, order-diagnostics.test.ts, questPanel, quests/sideQuests/dailyQuests, progression (applyLevels), seatRate, BURNER_POSITIONS.
+> Если факты Шага 0 совпали — идём в TECH-3 Phase 0 (read-разведка `4394b2d`).»
 
 Если расхождение — стоп, перечитать §3–§12.
 
@@ -292,21 +277,25 @@ git tag -l "archive/*"
 npm test
 ```
 
-**Ожидание на 2026-11-25 (после VISUAL-8.5):**
+**Ожидание на 2026-11-25 (после LOGIC-9 A1):**
 - main, clean, ahead 0
-- `f8266a3 → c82b9e5 → d84c76a → 7523396 → d84dbe2 → 0f12631 → 223140a → a3b37cc → 65fab54`
+- `0e72565 → a38c9b0 → 7fd98f8 → b7668cd → 0dc96a6 → f8266a3`
 - 382/382 unit, 53/53 e2e, build ✅
-- Теги: archive/logic-8.4.1-chef-station = 65fab54, archive/fix-chef-3x3-diagnostic = 0f12631, archive/visual-8.5-stove-burners = c82b9e5, + 10 старых
+- Теги: archive/logic-8.4.1-chef-station=65fab54, archive/fix-chef-3x3-diagnostic=0f12631, archive/visual-8.5-stove-burners=c82b9e5, archive/logic-9-waiter-bottleneck=a38c9b0, + 10 старых
 
 **Если разошлось:** стоп, разбор по §12.
 
 ## 15. После Шага 0
 
 **Порядок задач:**
-1. **VISUAL-8.5** (4 конфорки, только визуал — логика `stoveBurners = 4` уже работает). Phase 0/1 → task-файл → Phase 2–4 → merge → push.
-2. **LOGIC-9** (waiter bottleneck) — Phase 0 замеры (метрики F1–F7, см. §6.1) → решение о варианте (A1/A2/A3/A4/B1/B2/B3/D1/E1) → task-файл → Phase 2–4.
-3. TECH-3, TECH-2, TECH-1, TECH-5.1.
-4. Ф5 (повар без заказов не на станции) — из техдолга.
-5. Пакетная чистка веток — отдельным шагом.
+1. **TECH-3** (`catalog-decorations.spec.ts`, разобрать `4394b2d` — ослабили проверку монет). Read-разведка → task-файл → Kimi Phase 2 → merge → push.
+2. **TECH-2** (`waitForTimeout` → `waitForFunction` в e2e).
+3. **TECH-1** (интеграционные тесты мебели, по kind).
+4. **TECH-5.1** (e2e плотной планировки, бэклог).
+5. Ф5 (повар без заказов не на станции) — из техдолга.
+6. Пакетная чистка веток — отдельным шагом.
+7. LOGIC-10 (eating time / table turnover, A2/A3/D) — только по явной просьбе пользователя (см. §6.1).
 
 **Техдолг погасить:** Ф1, Ф2, Ф3, Ф4, Ф7 — по мере, отдельными коммитами `chore: ...`.
+
+**Текущая задача — TECH-3.** Read-разведка (`git show 4394b2d -- e2e/catalog-decorations.spec.ts` + `type e2e\catalog-decorations.spec.ts`) → DeepSeek пишет `docs/tasks/TECH-3.md` → Kimi → merge → push.

@@ -5,22 +5,21 @@
 
 ## Где мы
 
-- LOGIC-8.1 ✅, 8.2 ✅, 8.3 ✅, visual 3D-тарелки ✅, LOGIC-8.4 ✅ (`09afd32`), **LOGIC-8.4.1 ✅ (`a3b37cc`)**.
-- **fix-balance ✅ (`d84dbe2`)** — балансировка заказов между поварами (`pickLeastLoadedChef` в 2 точках).
-- **VISUAL-8.5 ✅ (`f8266a3`)** — 4 независимых конфорки (визуал, `BURNER_POSITIONS` + массивы flames/pans).
-- main = `f8266a3`, origin/main = `f8266a3` (sync).
+- LOGIC-8.1–8.4.1 ✅, visual 3D-тарелки ✅, fix-balance ✅ (`d84dbe2`), VISUAL-8.5 ✅ (`f8266a3`).
+- **LOGIC-9 A1 ✅ (`0e72565`)** — waiter queue, официант больше не bottleneck (cycle ×3 быстрее).
+- main = `0e72565`, origin/main = `0e72565` (sync).
 - Unit 382/382, e2e 53/53, build exit 0.
-- **Следующая: LOGIC-9 — waiter bottleneck, Phase 0 замеры.**
+- **Следующая: TECH-3** (`catalog-decorations.spec.ts`, разобрать `4394b2d`).
 
 ## Порядок задач
 
 | # | Задача | Статус |
 |---|---|---|
-| 1 | **LOGIC-9** — waiter bottleneck (Phase 0 замеры F1–F10) | **← следующая** |
-| 2 | TECH-3 — `catalog-decorations.spec.ts` | после LOGIC-9 |
-| 3 | TECH-2 — `waitForTimeout` → `waitForFunction` | после TECH-3 |
-| 4 | TECH-1 — интеграционные тесты мебели | после TECH-2 |
-| 5 | TECH-5.1 — e2e для плотной планировки | бэклог |
+| 1 | **TECH-3** — `catalog-decorations.spec.ts`, разобрать `4394b2d` | **← следующая** |
+| 2 | TECH-2 — `waitForTimeout` → `waitForFunction` | после TECH-3 |
+| 3 | TECH-1 — интеграционные тесты мебели | после TECH-2 |
+| 4 | TECH-5.1 — e2e для плотной планировки | бэклог |
+| 5 | LOGIC-10 (eating time / table turnover) — backlog | опционально |
 | 6 | Ф5 (техдолг) — повар без заказов на станцию | по мере |
 | 7 | Пакетная чистка веток | отдельным шагом |
 
@@ -82,19 +81,17 @@
 ## Последние коммиты
 
 ```
-f8266a3 merge VISUAL-8.5: 4 burners on stove
-c82b9e5 feat(VISUAL-8.5): 4 independent burners with per-burner flame and pan
-d84c76a docs: replace git-rule A with user-driven read-research (lesson 41)
-7523396 docs: fix-balance done, LOGIC-9 backlog, VISUAL-8.5 next
-d84dbe2 merge fix: balance orders across chefs
+0e72565 merge LOGIC-9 A1: waiter queue
+a38c9b0 feat(LOGIC-9-A1): waiter puts order directly to waitingCook (no chef walk)
+7fd98f8 docs: LOGIC-9 A1 task (waiter queue)
+b7668cd docs: LOGIC-9 Phase 0 metrics task
+0dc96a6 docs: VISUAL-8.5 done, LOGIC-9 Phase 0 next
 ```
 
 ## Состояние
 
-- main = `f8266a3` (sync с origin)
-- Теги: archive/logic-8.4.1-chef-station = 65fab54,
-  archive/fix-chef-3x3-diagnostic = 0f12631,
-  archive/visual-8.5-stove-burners = c82b9e5, + 10 старых
+- main = `0e72565` (sync с origin)
+- Теги: archive/logic-8.4.1-chef-station=65fab54, archive/fix-chef-3x3-diagnostic=0f12631, archive/visual-8.5-stove-burners=c82b9e5, archive/logic-9-waiter-bottleneck=a38c9b0, + 10 старых
 - Unit 382/382, e2e 53/53, build exit 0
 
 ## Что дальше
@@ -113,6 +110,27 @@ d84dbe2 merge fix: balance orders across chefs
 - **Ф5.** Повар без заказов не идёт на станцию (визуал).
 - **Ф6.** Пакетная чистка веток.
 - **Ф7.** `4394b2d relax coins check` — разобрать.
+
+## LOGIC-10 — backlog (официанты, eating time)
+
+**Статус:** не начато. Активировать только по явной просьбе пользователя.
+
+**Что уже работает после A1 (`0e72565`):**
+- Официант цикл ×3 быстрее, throughput ×3
+- `waitingWaiter = 18.33` — гости ждут официанта ~42 тика (patience 120+, не уходят)
+- Остаточный потолок — столы (F5=91%) / eatTime ≈ 98 тиков
+
+**Варианты по условию:**
+| Условие | Вариант | Цена |
+|---|---|---|
+| Сократить `waitingWaiter` на 30–40% | A3 (Multi-drop) | 1 сессия |
+| Сократить `waitingWaiter` на 50% | A2 (Multi-pickup) | 2-3 сессии |
+| Больше throughput | LOGIC-10 (eating time / столы) | 1-2 сессии + дизайн |
+| Меньше queueRejected | D (waiterMovementSteps +1) | 1 правка |
+
+**Правило:** перед выбором — повторить метрики F1–F17 (восстановить `__debug.metrics` из `archive/logic-9-waiter-bottleneck`). Bottleneck сместился (урок 43).
+
+**Не делать:** A4 (FIFO), A5 (разделение ролей), B1–B3 (стойки работают), C1–C3 (уже работает), E1–E2 (повара быстрые).
 
 ## Блокеры
 
