@@ -26,9 +26,20 @@ function pickupScene(level: number): GameState {
 
 function serviceScene(level: number): GameState {
   const state = createGame();
+  state.width = 20;
+  state.height = 20;
   state.upgrades.waiter = level;
-  state.furniture.push({ id: 'counter-1', kind: 'counter', position: { x: 2, y: 1 }, rotation: 0 });
-  state.employees.push({ id: 'waiter-1', role: 'waiter', position: { x: 3, y: 2 }, energy: 100 });
+  state.employees = [];
+  state.furniture = state.furniture.filter((item) => item.kind !== 'stove' && item.kind !== 'counter');
+  for (let index = 0; index < 3; index += 1) {
+    const x = 1 + index * 2;
+    state.furniture.push(
+      { id: `stove-${index + 1}`, kind: 'stove', position: { x, y: 1 }, rotation: 0 },
+      { id: `counter-${index + 1}`, kind: 'counter', position: { x, y: 2 }, rotation: 0 },
+    );
+    state.employees.push({ id: `chef-${index + 1}`, role: 'chef', position: { x: x + 1, y: 1 }, energy: 100, stoveId: `stove-${index + 1}` });
+  }
+  state.employees.push({ id: 'waiter-1', role: 'waiter', position: { x: 3, y: 4 }, energy: 100 });
   return state;
 }
 
@@ -106,7 +117,7 @@ describe('LOGIC-8.2 — мульти-забор официантом', () => {
     expect(state.employees[0].taskId).toBeUndefined();
   });
 
-  it('1 повар / 1 плита / 1 стойка: пятый уровень обслуживает больше гостей за 300 тиков', () => {
+  it('3 повара / 3 плиты / 3 стойки: пятый уровень обслуживает больше гостей за 300 тиков', () => {
     const basic = serviceScene(0);
     const upgraded = serviceScene(5);
     advanceSimulation(basic, 300);
