@@ -7,22 +7,22 @@
 
 - LOGIC-8.1 ✅, 8.2 ✅, 8.3 ✅, visual 3D-тарелки ✅, LOGIC-8.4 ✅ (`09afd32`), **LOGIC-8.4.1 ✅ (`a3b37cc`)**.
 - **fix-balance ✅ (`d84dbe2`)** — балансировка заказов между поварами (`pickLeastLoadedChef` в 2 точках).
-- main = `d84dbe2`, origin/main = `d84dbe2` (sync).
-- Unit 381/381, e2e 53/53, build exit 0.
-- **Следующая: VISUAL-8.5 — 4 конфорки на плите.**
+- **VISUAL-8.5 ✅ (`f8266a3`)** — 4 независимых конфорки (визуал, `BURNER_POSITIONS` + массивы flames/pans).
+- main = `f8266a3`, origin/main = `f8266a3` (sync).
+- Unit 382/382, e2e 53/53, build exit 0.
+- **Следующая: LOGIC-9 — waiter bottleneck, Phase 0 замеры.**
 
 ## Порядок задач
 
 | # | Задача | Статус |
 |---|---|---|
-| 1 | **VISUAL-8.5** — 4 конфорки на плите (только визуал, логика работает) | **← следующая** |
-| 2 | LOGIC-9 — waiter bottleneck (Phase 0 замеры, варианты A1–E2) | бэклог, после VISUAL-8.5 |
-| 3 | TECH-3 — `catalog-decorations.spec.ts` | после LOGIC-9 |
-| 4 | TECH-2 — `waitForTimeout` → `waitForFunction` | после TECH-3 |
-| 5 | TECH-1 — интеграционные тесты мебели | после TECH-2 |
-| 6 | TECH-5.1 — e2e для плотной планировки | бэклог |
-| 7 | Ф5 (техдолг) — повар без заказов на станцию | по мере |
-| 8 | Пакетная чистка веток | отдельным шагом |
+| 1 | **LOGIC-9** — waiter bottleneck (Phase 0 замеры F1–F10) | **← следующая** |
+| 2 | TECH-3 — `catalog-decorations.spec.ts` | после LOGIC-9 |
+| 3 | TECH-2 — `waitForTimeout` → `waitForFunction` | после TECH-3 |
+| 4 | TECH-1 — интеграционные тесты мебели | после TECH-2 |
+| 5 | TECH-5.1 — e2e для плотной планировки | бэклог |
+| 6 | Ф5 (техдолг) — повар без заказов на станцию | по мере |
+| 7 | Пакетная чистка веток | отдельным шагом |
 
 ## LOGIC-9 — бэклог идей (не потерять)
 
@@ -45,13 +45,20 @@
 
 Полный контекст — в `handoff-state.md` §6.1.
 
-## Текущая задача: VISUAL-8.5 (следующая сессия)
+## Текущая задача: LOGIC-9 (waiter bottleneck)
 
-**Цель:** 4 конфорки на плите (визуально + логика).
+**Статус:** Phase 0 (замеры) — до кода. Полный бэклог идей в handoff-state §6.1 и ниже.
 
-**Статус:** task-файл ещё не создан. Следующий шаг — Phase 0/1 (Kimi) → DeepSeek пишет `docs/tasks/VISUAL-8.5-stove-4-burners.md`.
+**Метрики Phase 0 (F1–F10):**
+- F1 avgWaitTime гостей, F2 waiterIdleTime, F3 cookingTime, F4 counterFullRate,
+  F5 occupiedSeats/guestLimit, F6 orders.length, F7 avgWaiterTripTime,
+  F8 avgBurnersUsedPerStove, F9 waiterAcceptCycleTime, F10 chefFillRate.
 
-**Инвариант:** `stoveBurners = Math.min(4, 2 + (stoveCount - 1))` — не трогать без согласования (см. handoff §8).
+**Метод:** временный `__debug` под `import.meta.env.DEV` (как в fix-balance, урок 40). Удалить после.
+
+**Решение о варианте (A1–E2) — по фактам замеров** (урок 8, не подгонять).
+
+**Гипотеза от пользователя (наблюдение в игре):** 4-я конфорка не заполняется — официант принимает 1 заказ, отдаёт 4. Если `F8 < 2` и `F9` высокий → A1 (WaiterQueue) или A2 (Multi-pickup) дадут прирост. Проверить замером.
 
 ## Структура работы с Kimi Code
 
@@ -75,18 +82,20 @@
 ## Последние коммиты
 
 ```
+f8266a3 merge VISUAL-8.5: 4 burners on stove
+c82b9e5 feat(VISUAL-8.5): 4 independent burners with per-burner flame and pan
+d84c76a docs: replace git-rule A with user-driven read-research (lesson 41)
+7523396 docs: fix-balance done, LOGIC-9 backlog, VISUAL-8.5 next
 d84dbe2 merge fix: balance orders across chefs
-0f12631 fix(kitchen): balance orders across chefs via least-loaded picker
-223140a docs: LOGIC-8.4.1 done, VISUAL-8.5 next
-a3b37cc merge LOGIC-8.4.1: chef station
-65fab54 feat(LOGIC-8.4.1): chef station behind stove, return after delivery
 ```
 
 ## Состояние
 
-- main = `d84dbe2` (sync с origin)
-- Теги: `archive/logic-8.4.1-chef-station` = 65fab54, `archive/fix-chef-3x3-diagnostic` = 0f12631, + 10 старых `archive/*`
-- Unit 381/381, e2e 53/53, build exit 0
+- main = `f8266a3` (sync с origin)
+- Теги: archive/logic-8.4.1-chef-station = 65fab54,
+  archive/fix-chef-3x3-diagnostic = 0f12631,
+  archive/visual-8.5-stove-burners = c82b9e5, + 10 старых
+- Unit 382/382, e2e 53/53, build exit 0
 
 ## Что дальше
 

@@ -31,20 +31,28 @@
 
 **Правило эффективности:** короткие ответы. Лимиты тратятся.
 
-## 2. Текущее состояние (на конец 2026-11-25, после fix-balance)
+## 2. Текущее состояние (на конец 2026-11-25, после VISUAL-8.5)
 
 | Ветка | Коммит | Статус |
 |---|---|---|
-| main | d84dbe2 | ✅ HEAD, merge fix-balance, запушен |
-| origin/main | d84dbe2 | ✅ sync |
+| main | f8266a3 | ✅ HEAD, merge VISUAL-8.5, запушен |
+| origin/main | f8266a3 | ✅ sync |
 | archive/logic-8.4.1-chef-station | 65fab54 | ✅ тег |
 | archive/fix-chef-3x3-diagnostic | 0f12631 | ✅ тег |
+| archive/visual-8.5-stove-burners | c82b9e5 | ✅ тег |
 | master | 0bf062a | реликт (backlog) |
 
-**Тесты:** unit **381/381**, e2e **53/53**, build ✅ (exit 0).
+**Тесты:** unit **382/382**, e2e **53/53**, build ✅ (exit 0).
 **`git status`:** на main, clean, ahead 0.
 
 ## 3. Что сделано по сессиям
+
+### 2026-11-25 — VISUAL-8.5 (закрыт, `f8266a3`)
+
+- Feat `c82b9e5`: 4 независимых конфорки на плите — `BURNER_POSITIONS` (module-const), 4 `flames[]`, 4 `pans[]` в `stoveModel`. `RestaurantWorld.syncEntities` переключает по `cookingCount` (не boolean). Обратная совместимость: `userData.flame = flames[0]`, `userData.pan = pans[0]`.
+- Merge `f8266a3` (`--no-ff`), tag `archive/visual-8.5-stove-burners` = `c82b9e5`
+- Новый тест в `tests/models3d.test.ts` (4 flames, 4 pans, обратная совместимость)
+- Проверено в игре: 3 огня одновременно на 3 конфорках. 4-я конфорка не заполняется — waiter bottleneck (LOGIC-9, не баг визуала).
 
 ### 2026-11-25 — fix-balance (закрыт, `d84dbe2`)
 
@@ -87,15 +95,15 @@
 ## 5. Roadmap
 
 ```
-VISUAL-8.5 → LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
+LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 → TECH-5.1
 ```
+
 
 | # | Задача | Статус |
 |---|---|---|
-| 1–6 | 8.1–8.4.1 | ✅ |
-| 7 | fix-balance | ✅ d84dbe2 |
-| 8 | **VISUAL-8.5** (4 конфорки, только визуал) | **← следующая** |
-| 9 | LOGIC-9 (waiter bottleneck, Phase 0 замеры) | бэклог, см. §6.1 |
+| 1–7 | 8.1–8.4.1 + fix-balance | ✅ |
+| 8 | **VISUAL-8.5** (4 конфорки) | ✅ f8266a3 |
+| 9 | **LOGIC-9** (waiter bottleneck, Phase 0 замеры) | **← следующая** |
 | 10–13 | TECH-3 → TECH-2 → TECH-1 → TECH-5.1 | ожидает |
 | 14 | Пакетная чистка веток | отложено |
 
@@ -119,7 +127,10 @@ VISUAL-8.5 → LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 �
 - F5. `occupiedSeats / guestLimit`
 - F6. `orders.length` в очереди
 - F7. `avgWaiterTripTime` (время одного цикла официанта)
-
+- F8. `avgBurnersUsedPerStove` (0–4) — среднее число занятых конфорок на плите
+- F9. `waiterAcceptCycleTime` — тиков от `takingOrder` до возврата официанта к следующему столу
+- F10. `chefFillRate` — % времени `chef.activeOrders.length === stoveBurners`
+- 
 **Метод:** временный `__debug.dump()` (как в fix-balance) или новый `__debug.metrics()`. Удалить после.
 
 **Интерпретация:**
@@ -212,6 +223,7 @@ VISUAL-8.5 → LOGIC-9 (Phase 0 замеры) → TECH-3 → TECH-2 → TECH-1 �
 39. **«Первый до лимита» — антипаттерн распределения.** При 3+ поварах первый забирает всё до `stoveBurners`, остальные стоят. Фикс — `pickLeastLoadedChef` (min activeOrders + tie-break по id) в **обеих** точках: `updateKitchenOrders` (waitingCook) + `updateWaiter` (takingOrder). Не только одна — иначе перекос вернётся через handoff.
 40. **Debug-сетап для чистой игры.** Если баг не воспроизводится в unit-тестах и нет старого сейва — временный `__debug` в `main.ts` под `import.meta.env.DEV`: методы `setup3x3`, `setLevel`, `setCoins`, `dump`. **Обязательно удалить после диагностики** (`git checkout -- src/main.ts`). Плюс: `state.orders = []` после сброса `state.furniture/employees` — иначе зомби-заказы на несуществующих плитах.
 41. **Read-разведка — на пользователе, не на Kimi.** Kimi тратит лимиты подписки на `git grep/show/log`, которые пользователь делает за 5 секунд и бесплатно. Kimi получает **готовые факты** (цитаты файлов, списки тестов), а не команды «сходи и посмотри». Экономия — 1–2 сессии на задачу. Заменяет прежнее «Git-правило A» (уроки 30, 34 — устарели).
+42. **`stoveBurners` ≠ фактическая загрузка конфорок.** При 3 плитах лимит 4 конфорки на повара, но фактически горит 1–3, потому что официант принимает 1 заказ за цикл, а отдаёт 4 (handoff). VISUAL-8.5 визуал корректен (огонь там, где готовится), но 4-я конфорка редко достижима — это waiter bottleneck (LOGIC-9), не баг визуала.
 
 ## 9. Что НЕ трогать без подтверждения
 
@@ -280,11 +292,11 @@ git tag -l "archive/*"
 npm test
 ```
 
-**Ожидание на 2026-11-25 (после fix-balance):**
+**Ожидание на 2026-11-25 (после VISUAL-8.5):**
 - main, clean, ahead 0
-- `d84dbe2 → 0f12631 → 223140a → a3b37cc → 65fab54`
-- 381/381 unit, 53/53 e2e, build ✅
-- теги: archive/logic-8.4.1-chef-station = 65fab54, archive/fix-chef-3x3-diagnostic = 0f12631, + 10 старых
+- `f8266a3 → c82b9e5 → d84c76a → 7523396 → d84dbe2 → 0f12631 → 223140a → a3b37cc → 65fab54`
+- 382/382 unit, 53/53 e2e, build ✅
+- Теги: archive/logic-8.4.1-chef-station = 65fab54, archive/fix-chef-3x3-diagnostic = 0f12631, archive/visual-8.5-stove-burners = c82b9e5, + 10 старых
 
 **Если разошлось:** стоп, разбор по §12.
 
